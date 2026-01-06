@@ -1,0 +1,93 @@
+import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { config } from 'dotenv';
+import User from '../models/User';
+import { create } from 'node:domain';
+
+config();
+const JWT_SECRET = process.env.JWT_SECRET || '';
+
+export interface AuthRequest extends Request {
+  user?: any;
+}
+
+export const register = async (req: Request, res: Response) => {
+  try {
+    const { name, email, password, address } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({ message: 'User already exists with this email' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
+    const newUser = await User.create({
+      name: name || null,
+      address: address || null,
+      id: Math.floor(Math.random() * 1000000),
+      email,
+      password: hashedPassword,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastEntrance:new Date()
+    });
+
+    const payload = { id: newUser.get('id'), email: newUser.get('email') };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
+
+    const safeUser = { id: newUser.get('id'), name: newUser.get('name'), email: newUser.get('email') };
+    res.status(201).json({ token, user: safeUser });
+  } catch (err) {
+    res.status(500).json({ message: 'Registration error', error: err });
+  }
+};
+
+export const login = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ message: 'Email and password are required' });
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+
+    // Compare hashed passwords
+    const hashedPassword = (user.get('password') as string) || '';
+    const isPasswordValid = await bcrypt.compare(password, hashedPassword);
+    if (!isPasswordValid) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const payload = { id: user.get('id'), email: user.get('email') };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
+
+    const safeUser = { id: user.get('id'), name: user.get('name'), email: user.get('email') };
+    res.json({ token, user: safeUser });
+  } catch (err) {
+    res.status(500).json({ message: 'Login error', error: err });
+  }
+};
+
+export const getProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const safeUser = { id: user.get('id'), name: user.get('name'), email: user.get('email') };
+    res.json(safeUser);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching profile', error: err });
+  }
+};

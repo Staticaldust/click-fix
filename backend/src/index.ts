@@ -4,6 +4,7 @@ import { testConnection, syncDatabase, sequelize } from "./config/database";
 import initializeDatabase from "./config/initDb";
 import { seedDatabase } from "./config/seed";
 import "./models/sequelizeModels"; // Import models to register them
+import authRoutes from "./routes/authRoutes";
 import categoryRoutes from "./routes/categoryRoutes";
 import userRoutes from "./routes/userRoutes";
 import employeeRoutes from "./routes/employeeRoutes";
@@ -19,6 +20,7 @@ app.get("/health", (req, res) => {
 });
 
 // API Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/employees", employeeRoutes);
