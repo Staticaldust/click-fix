@@ -1,30 +1,43 @@
 export enum FatherCategory {
-    ELECTRONICS = 'Electronics',
-    GENERAL = 'General',
-    COSMETICS = 'Cosmetics',
-    STRUCTURE_AND_INSTALLATION = 'Structure and Installation',
-    DESIGN_AND_RENOVATION = 'Design and Renovation',
-};
+    ELECTRONICS = 'חשמל ואלקטרוניקה',
+    GENERAL = 'שירותים כלליים',
+    COSMETICS = 'קוסמטיקה וטיפוח',
+    STRUCTURE_AND_INSTALLATION = 'מבנה ואינסטלציה',
+    DESIGN = 'עיצוב ואדריכלות',
+}
+
 export enum Area {
-    NORTH = 'North',
-    SOUTH = 'South',
-    CENTER = 'Center',
-    JERUSALEM = 'Jerusalem',
-    JUDEA_AND_SAMARIA = 'Judea and Samaria',
-};
+    NORTH = 'צפון',
+    SOUTH = 'דרום',
+    CENTER = 'מרכז',
+    JERUSALEM = 'ירושלים',
+    JUDEA_AND_SAMARIA = 'יהודה ושומרון',
+}
+
 export type Category = {
     id: number;
     name: string;
     description: string;
+    image: string;
     fatherCategory: FatherCategory;
 };
 
-export type employee = {
+export type User = {
+    id: number;
+    username: string;
+    email: string;
+    image: string | null;
+    address: string;
+    reviews: Review[];
+};
+
+export type Employee = {
     id: number;
     name: string;
+    image: string;
     area: Area;
-    category: Category;
-    sex:'M' | 'F';
+    category: Category[];
+    gender: 'M' | 'F';
     avgRate: number;
     avgPriceRate: number;
     avgPerformanceRate: number;
@@ -33,18 +46,11 @@ export type employee = {
     email: string;
     phone: string;
 };
-export type User = {
-  id: number;
-  username: string;
-  email: string;
-  address: string;
-  reviews: Review[];
-}
+
 export type Review = {
     id: number;
     reviewer: User;
-    employee: employee;
-    rate: number;
+    employee: Employee;
     priceRate: number;
     performanceRate: number;
     serviceRate: number;
