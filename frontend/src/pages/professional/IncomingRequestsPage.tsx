@@ -1,0 +1,313 @@
+import { useState } from 'react';
+import {
+  FileText,
+  Clock,
+  Phone,
+  MessageSquare,
+  CheckCircle,
+} from 'lucide-react';
+import { Card, Button, Select, Avatar, Modal, Input } from '../../components/common';
+import { formatDate, classNames } from '../../utils/helpers';
+import { QUOTE_STATUS_LABELS } from '../../utils/constants';
+import type { QuoteRequest, QuoteStatus } from '../../types/quote.types';
+
+// Mock data
+const mockRequests: QuoteRequest[] = [
+  {
+    id: '1',
+    customerId: 'c1',
+    customerName: 'ישראל כהן',
+    professionalId: 'p1',
+    professionalName: 'דוד כהן',
+    categoryId: 'electrician',
+    answers: [
+      { questionId: 'q1', question: 'סוג העבודה', answer: 'תיקון תקלה' },
+      { questionId: 'q2', question: 'תיאור הבעיה', answer: 'נפלו חשמלים בחדר שינה' },
+    ],
+    description: 'צריך תיקון דחוף של חשמל בחדר שינה, החשמל קופץ כל כמה דקות',
+    urgency: 'high',
+    responseMethod: 'system',
+    status: 'pending',
+    createdAt: new Date('2024-01-12T10:30:00'),
+  },
+  {
+    id: '2',
+    customerId: 'c2',
+    customerName: 'רחל לוי',
+    professionalId: 'p1',
+    professionalName: 'דוד כהן',
+    categoryId: 'electrician',
+    answers: [
+      { questionId: 'q1', question: 'סוג העבודה', answer: 'התקנה חדשה' },
+      { questionId: 'q2', question: 'כמות נקודות', answer: '5' },
+    ],
+    description: 'התקנת 5 נקודות חשמל בדירה חדשה',
+    urgency: 'medium',
+    responseMethod: 'phone',
+    status: 'pending',
+    createdAt: new Date('2024-01-11T14:20:00'),
+  },
+  {
+    id: '3',
+    customerId: 'c3',
+    customerName: 'משה גולד',
+    professionalId: 'p1',
+    professionalName: 'דוד כהן',
+    categoryId: 'electrician',
+    answers: [],
+    description: 'בדיקת לוח חשמל ישן',
+    urgency: 'low',
+    responseMethod: 'system',
+    status: 'responded',
+    createdAt: new Date('2024-01-10T09:00:00'),
+    respondedAt: new Date('2024-01-10T11:30:00'),
+  },
+];
+
+const statusColors: Record<QuoteStatus, string> = {
+  pending: 'bg-yellow-100 text-yellow-700',
+  responded: 'bg-green-100 text-green-700',
+  accepted: 'bg-blue-100 text-blue-700',
+  rejected: 'bg-red-100 text-red-700',
+  expired: 'bg-gray-100 text-gray-700',
+};
+
+const urgencyColors: Record<string, string> = {
+  low: 'bg-green-100 text-green-700',
+  medium: 'bg-yellow-100 text-yellow-700',
+  high: 'bg-red-100 text-red-700',
+};
+
+const urgencyLabels: Record<string, string> = {
+  low: 'רגיל',
+  medium: 'בינוני',
+  high: 'דחוף',
+};
+
+export default function IncomingRequestsPage() {
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [requests] = useState<QuoteRequest[]>(mockRequests);
+  const [selectedRequest, setSelectedRequest] = useState<QuoteRequest | null>(null);
+  const [showResponseModal, setShowResponseModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [responseData, setResponseData] = useState({
+    price: '',
+    availability: '',
+    notes: '',
+  });
+
+  const filteredRequests = statusFilter
+    ? requests.filter((r) => r.status === statusFilter)
+    : requests;
+
+  const pendingCount = requests.filter((r) => r.status === 'pending').length;
+
+  const statusOptions = [
+    { value: '', label: 'כל הסטטוסים' },
+    ...Object.entries(QUOTE_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+  ];
+
+  const handleRespond = (request: QuoteRequest) => {
+    setSelectedRequest(request);
+    setShowResponseModal(true);
+  };
+
+  const submitResponse = async () => {
+    if (!selectedRequest) return;
+    setIsSubmitting(true);
+    try {
+      console.log('Submitting response:', { requestId: selectedRequest.id, ...responseData });
+      // In production: await quoteService.respond(selectedRequest.id, responseData);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setShowResponseModal(false);
+      setResponseData({ price: '', availability: '', notes: '' });
+    } catch (error) {
+      console.error('Failed to submit response:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-secondary-800 mb-2">
+          <FileText className="w-7 h-7 inline ml-2 text-primary-500" />
+          בקשות הצעת מחיר
+          {pendingCount > 0 && (
+            <span className="mr-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-sm rounded-full">
+              {pendingCount} חדשות
+            </span>
+          )}
+        </h1>
+        <p className="text-secondary-600">
+          נהלו את הבקשות שנכנסות מלקוחות פוטנציאליים
+        </p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4 mb-6">
+        <Select
+          options={statusOptions}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="w-48"
+        />
+      </div>
+
+      {/* Requests List */}
+      {filteredRequests.length === 0 ? (
+        <Card className="text-center py-12">
+          <FileText className="w-16 h-16 text-secondary-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-secondary-800 mb-2">
+            {statusFilter ? 'אין בקשות בסטטוס זה' : 'אין בקשות חדשות'}
+          </h2>
+          <p className="text-secondary-600">
+            בקשות חדשות יופיעו כאן כאשר לקוחות ישלחו הצעות מחיר
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filteredRequests.map((request) => (
+            <Card key={request.id} className="hover:shadow-md transition-shadow">
+              <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                {/* Customer Info */}
+                <div className="flex items-start gap-3 flex-1">
+                  <Avatar name={request.customerName} size="lg" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-secondary-800">
+                        {request.customerName}
+                      </h3>
+                      <span className={classNames(
+                        'px-2 py-0.5 rounded-full text-xs font-medium',
+                        urgencyColors[request.urgency]
+                      )}>
+                        {urgencyLabels[request.urgency]}
+                      </span>
+                      <span className={classNames(
+                        'px-2 py-0.5 rounded-full text-xs font-medium',
+                        statusColors[request.status]
+                      )}>
+                        {QUOTE_STATUS_LABELS[request.status]}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-secondary-500 mt-1">
+                      <Clock className="w-4 h-4" />
+                      {formatDate(request.createdAt)}
+                      {request.responseMethod === 'phone' && (
+                        <>
+                          <span className="mx-1">•</span>
+                          <Phone className="w-4 h-4" />
+                          מעדיף שיחה טלפונית
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 lg:flex-shrink-0">
+                  {request.status === 'pending' && (
+                    <Button onClick={() => handleRespond(request)}>
+                      שלח הצעת מחיר
+                    </Button>
+                  )}
+                  <Button variant="outline">
+                    <MessageSquare className="w-4 h-4" />
+                    צ'אט
+                  </Button>
+                </div>
+              </div>
+
+              {/* Request Details */}
+              {request.description && (
+                <div className="mt-4 pt-4 border-t border-secondary-100">
+                  <p className="text-secondary-700">{request.description}</p>
+                </div>
+              )}
+
+              {/* Answers */}
+              {request.answers.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-secondary-100">
+                  <h4 className="text-sm font-medium text-secondary-600 mb-2">פרטי הבקשה:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {request.answers.map((answer) => (
+                      <div key={answer.questionId} className="text-sm">
+                        <span className="text-secondary-500">{answer.question}: </span>
+                        <span className="text-secondary-800">
+                          {Array.isArray(answer.answer) ? answer.answer.join(', ') : answer.answer}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Response Modal */}
+      <Modal
+        isOpen={showResponseModal}
+        onClose={() => setShowResponseModal(false)}
+        title="שליחת הצעת מחיר"
+      >
+        {selectedRequest && (
+          <div className="space-y-4">
+            <div className="p-3 bg-secondary-50 rounded-lg">
+              <p className="text-sm text-secondary-600">בקשה מאת:</p>
+              <p className="font-medium text-secondary-800">{selectedRequest.customerName}</p>
+            </div>
+
+            <Input
+              label="מחיר מוצע (ש״ח)"
+              type="number"
+              required
+              value={responseData.price}
+              onChange={(e) => setResponseData({ ...responseData, price: e.target.value })}
+              placeholder="לדוגמה: 350"
+            />
+
+            <Input
+              label="זמינות"
+              required
+              value={responseData.availability}
+              onChange={(e) => setResponseData({ ...responseData, availability: e.target.value })}
+              placeholder="לדוגמה: יום ראשון בבוקר"
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
+                הערות נוספות
+              </label>
+              <textarea
+                rows={3}
+                className="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:border-primary-500 focus:ring-primary-500/20 resize-none"
+                value={responseData.notes}
+                onChange={(e) => setResponseData({ ...responseData, notes: e.target.value })}
+                placeholder="פרטים נוספים על ההצעה..."
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={submitResponse}
+                isLoading={isSubmitting}
+                fullWidth
+                disabled={!responseData.price || !responseData.availability}
+              >
+                <CheckCircle className="w-5 h-5" />
+                שלח הצעה
+              </Button>
+              <Button variant="outline" onClick={() => setShowResponseModal(false)}>
+                ביטול
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
