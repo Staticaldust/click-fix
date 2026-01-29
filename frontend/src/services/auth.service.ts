@@ -43,9 +43,11 @@ export const authService = {
     await api.post('/auth/reset-password', { token, password });
   },
 
-  setTokens(token: string, refreshToken: string): void {
+  setTokens(token: string, refreshToken?: string): void {
     localStorage.setItem('token', token);
-    localStorage.setItem('refreshToken', refreshToken);
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken);
+    }
   },
 
   getToken(): string | null {

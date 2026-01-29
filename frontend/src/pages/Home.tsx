@@ -1,101 +1,107 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import type { Category, Employee, User, Review } from '../types'
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import type {
+  ServerCategory,
+  ServerEmployee,
+  ServerUser,
+  ServerReview,
+} from '../types/server.types';
 
-const API_URL = 'http://localhost:3000/api'
+const API_URL = 'http://localhost:3000/api';
 
 export default function Home() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [users, setUsers] = useState<User[]>([])
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [currentUser, setCurrentUser] = useState<any | null>(null)
-  const navigate = useNavigate()
+  const [categories, setCategories] = useState<ServerCategory[]>([]);
+  const [users, setUsers] = useState<ServerUser[]>([]);
+  const [employees, setEmployees] = useState<ServerEmployee[]>([]);
+  const [reviews, setReviews] = useState<ServerReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const user = localStorage.getItem('user')
+    const user = localStorage.getItem('user');
     if (user) {
-      setCurrentUser(JSON.parse(user))
+      setCurrentUser(JSON.parse(user));
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
-        const token = localStorage.getItem('token')
+        const token = localStorage.getItem('token');
         if (!token) {
-          navigate('/signin')
-          return
+          navigate('/signin');
+          return;
         }
 
         const headers = {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        }
+          Authorization: `Bearer ${token}`,
+        };
 
-        const [categoriesResponse, usersResponse, employeesResponse, reviewsResponse] = await Promise.all([
-          fetch(`${API_URL}/categories`, { headers }),
-          fetch(`${API_URL}/users`, { headers }),
-          fetch(`${API_URL}/employees`, { headers }),
-          fetch(`${API_URL}/reviews`, { headers }),
-        ])
+        const [categoriesResponse, usersResponse, employeesResponse, reviewsResponse] =
+          await Promise.all([
+            fetch(`${API_URL}/categories`, { headers }),
+            fetch(`${API_URL}/users`, { headers }),
+            fetch(`${API_URL}/employees`, { headers }),
+            fetch(`${API_URL}/reviews`, { headers }),
+          ]);
 
         if (categoriesResponse.ok) {
-          const data = await categoriesResponse.json()
-          setCategories(data)
+          const data = await categoriesResponse.json();
+          setCategories(data);
         } else {
-          console.error('Failed to fetch categories')
+          console.error('Failed to fetch categories');
         }
 
         if (usersResponse.ok) {
-          const data = await usersResponse.json()
-          setUsers(data)
+          const data = await usersResponse.json();
+          setUsers(data);
         } else {
-          console.error('Failed to fetch users')
+          console.error('Failed to fetch users');
         }
 
         if (employeesResponse.ok) {
-          const data = await employeesResponse.json()
-          setEmployees(data)
+          const data = await employeesResponse.json();
+          setEmployees(data);
         } else {
-          console.error('Failed to fetch employees')
+          console.error('Failed to fetch employees');
         }
 
         if (reviewsResponse.ok) {
-          const data = await reviewsResponse.json()
-          setReviews(data)
+          const data = await reviewsResponse.json();
+          setReviews(data);
         } else {
-          console.error('Failed to fetch reviews')
+          console.error('Failed to fetch reviews');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
+        setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (currentUser) {
-      fetchData()
+      fetchData();
     }
-  }, [currentUser, navigate])
+  }, [currentUser, navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    navigate('/signin')
-  }
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/signin');
+  };
 
   if (loading) {
     return (
       <div className="container">
         <p>Loading...</p>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -103,12 +109,19 @@ export default function Home() {
       <div className="container">
         <p style={{ color: 'red' }}>Error: {error}</p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+      >
         <h1>Click-Fix Database Viewer</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span>Welcome, {currentUser?.name || currentUser?.email || 'User'}!</span>
@@ -137,7 +150,6 @@ export default function Home() {
         <div className="grid">
           {employees.map((emp) => (
             <div key={emp.id} className="card">
-              <div className="image">{emp.image}</div>
               <h3>{emp.name}</h3>
               <p>
                 <strong>Email:</strong> {emp.email}
@@ -151,9 +163,9 @@ export default function Home() {
               <p>
                 <strong>Gender:</strong> {emp.gender}
               </p>
-              {Array.isArray(emp.category) && emp.category.length > 0 && (
+              {Array.isArray(emp.categories) && emp.categories.length > 0 && (
                 <p>
-                  <strong>Categories:</strong> {emp.category.map((c: any) => c.name).join(', ')}
+                  <strong>Categories:</strong> {emp.categories.map((c) => c.name).join(', ')}
                 </p>
               )}
             </div>
@@ -166,18 +178,13 @@ export default function Home() {
         <div className="grid">
           {users.map((user) => (
             <div key={user.id} className="card">
-              <h3>{(user as any).username || (user as any).name || 'User'}</h3>
+              <h3>{user.name || 'User'}</h3>
               <p>
                 <strong>Email:</strong> {user.email}
               </p>
               <p>
                 <strong>Address:</strong> {user.address}
               </p>
-              {user.image && (
-                <p>
-                  <strong>Image:</strong> {user.image}
-                </p>
-              )}
             </div>
           ))}
         </div>
@@ -186,11 +193,11 @@ export default function Home() {
       <section>
         <h2>Reviews ({reviews.length})</h2>
         <div className="grid">
-          {reviews.map((review: any) => (
+          {reviews.map((review) => (
             <div key={review.id} className="card">
               <h4>Review #{review.id}</h4>
               <p>
-                <strong>By:</strong> {review.reviewer?.username || review.reviewer?.name || 'Unknown'}
+                <strong>By:</strong> {review.user?.name || 'Unknown'}
               </p>
               <p>
                 <strong>For:</strong> {review.employee?.name || 'Unknown'}
@@ -212,5 +219,5 @@ export default function Home() {
         </div>
       </section>
     </div>
-  )
+  );
 }

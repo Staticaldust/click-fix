@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// API Configuration - Server runs on port 3000
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const API_TIMEOUT = 30000;
 
 // Create axios instance
@@ -16,7 +16,7 @@ export const apiClient: AxiosInstance = axios.create({
 // Request interceptor - add auth token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,58 +27,19 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor - handle errors and token refresh
+// Response interceptor - handle errors
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
-    // Handle 401 - try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          // TODO: Implement token refresh when server is ready
-          // const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-          // localStorage.setItem('accessToken', response.data.token);
-          // return apiClient(originalRequest);
-        }
-      } catch {
-        // Refresh failed - logout user
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
-      }
+    // Handle 401 - redirect to login
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
 
     return Promise.reject(error);
   }
 );
-
-// Generic API response type
-export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-  success: boolean;
-}
-
-// Pagination types
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface PaginationParams {
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-}
 
 // Error response type
 export interface ApiError {
@@ -87,9 +48,15 @@ export interface ApiError {
   field?: string;
 }
 
-// Helper to simulate API delay (remove when server is ready)
-export const simulateDelay = (ms: number = 500): Promise<void> => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// Helper to get error message from axios error
+export const getErrorMessage = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    return error.response?.data?.message || error.message || 'שגיאה לא צפויה';
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'שגיאה לא צפויה';
 };
 
 export default apiClient;
