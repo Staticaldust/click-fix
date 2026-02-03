@@ -4,10 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { Button, Input, Card } from '../../components/common';
+import { Button, Input, Select, Checkbox, Card } from '../../components/common';
 import { useAuthStore } from '../../store/authStore';
 import { registerSchema, RegisterFormData } from '../../utils/validators';
-// import { GENDER_OPTIONS, ISRAELI_CITIES } from '../../utils/constants';
+import { GENDER_OPTIONS, ISRAELI_CITIES } from '../../utils/constants';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -44,15 +44,15 @@ export default function RegisterPage() {
     }
   };
 
-  // const cityOptions = ISRAELI_CITIES.map((city) => ({
-  //   value: city,
-  //   label: city,
-  // }));
+  const cityOptions = ISRAELI_CITIES.map((city) => ({
+    value: city,
+    label: city,
+  }));
 
-  // const genderOptions = GENDER_OPTIONS.map((g) => ({
-  //   value: g.value,
-  //   label: g.label,
-  // }));
+  const genderOptions = GENDER_OPTIONS.map((g) => ({
+    value: g.value,
+    label: g.label,
+  }));
 
   return (
     <div className='min-h-screen bg-secondary-50 flex items-center justify-center py-12 px-4'>
@@ -101,14 +101,14 @@ export default function RegisterPage() {
               {...register('email')}
             />
 
-            {/* <Input
-              label="טלפון"
-              type="tel"
-              placeholder="0501234567"
+            <Input
+              label='טלפון'
+              type='tel'
+              placeholder='0501234567'
               required
               error={errors.phone?.message}
               {...register('phone')}
-            /> */}
+            />
 
             {/* Password fields */}
             <div className='relative'>
@@ -156,25 +156,25 @@ export default function RegisterPage() {
             </div>
 
             {/* Optional fields */}
-            {/* <div className="grid grid-cols-2 gap-4">
+            <div className='grid grid-cols-2 gap-4'>
               <Select
-                label="עיר"
+                label='עיר'
                 options={cityOptions}
-                placeholder="בחר עיר"
+                placeholder='בחר עיר'
                 error={errors.city?.message}
                 {...register('city')}
               />
               <Select
-                label="מגדר"
+                label='מגדר'
                 options={genderOptions}
-                placeholder="בחר מגדר"
+                placeholder='בחר מגדר'
                 error={errors.gender?.message}
                 {...register('gender')}
               />
-            </div> */}
+            </div>
 
             {/* Terms */}
-            {/* <Checkbox
+            <Checkbox
               label={
                 <span>
                   קראתי ואני מסכים/מה ל
@@ -195,7 +195,7 @@ export default function RegisterPage() {
               }
               error={errors.acceptTerms?.message}
               {...register('acceptTerms')}
-            /> */}
+            />
 
             <Button type='submit' fullWidth isLoading={isLoading}>
               <UserPlus className='w-5 h-5' />
@@ -215,14 +215,13 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          <div className='mt-4 text-center' style={{ opacity: '0.5' }}>
-            הרשמה כבעל מקצוע (בקרוב)
-            {/* <Link
+          <div className='mt-4 text-center'>
+            <Link
               to='/pro/register'
               className='text-sm text-secondary-500 hover:text-secondary-700'
             >
               הרשמה כבעל מקצוע
-            </Link> */}
+            </Link>
           </div>
         </Card>
       </div>
