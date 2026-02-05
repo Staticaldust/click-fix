@@ -25,12 +25,8 @@ export default function RegisterPage() {
       firstName: '',
       lastName: '',
       email: '',
-      phone: '',
       password: '',
       confirmPassword: '',
-      city: '',
-      gender: undefined,
-      acceptTerms: false,
     },
   });
 

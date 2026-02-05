@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ChevronLeft, MessageSquare, Phone, Clock, AlertCircle } from 'lucide-react';
+import {
+  ChevronLeft,
+  MessageSquare,
+  Phone,
+  Clock,
+  AlertCircle,
+} from 'lucide-react';
 import {
   Button,
   Card,
@@ -36,7 +42,14 @@ const mockProfessional: Professional = {
     { id: '2', name: 'התקנת נקודות חשמל', minPrice: 100, maxPrice: 200 },
   ],
   certificates: [],
-  rating: { overall: 4.8, reliability: 4.9, service: 4.7, availability: 4.6, price: 4.8, professionalism: 4.9 },
+  rating: {
+    overall: 4.8,
+    reliability: 4.9,
+    service: 4.7,
+    availability: 4.6,
+    price: 4.8,
+    professionalism: 4.9,
+  },
   reviewCount: 127,
   isVerified: true,
   createdAt: new Date(),
@@ -74,6 +87,8 @@ interface FormData {
 
 export default function QuoteRequestPage() {
   const { id } = useParams<{ id: string }>();
+  console.log({ id });
+
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -102,10 +117,12 @@ export default function QuoteRequestPage() {
     setIsSubmitting(true);
     try {
       // Transform answers to array format
-      const answersArray = Object.entries(data.answers).map(([questionId, answer]) => ({
-        questionId,
-        answer,
-      }));
+      const answersArray = Object.entries(data.answers).map(
+        ([questionId, answer]) => ({
+          questionId,
+          answer,
+        }),
+      );
 
       const requestData = {
         professionalId: id!,
@@ -129,15 +146,15 @@ export default function QuoteRequestPage() {
     }
   };
 
-  if (isLoading) {
-    return <PageLoader />;
-  }
+  if (isLoading) return <PageLoader />;
 
   if (!professional) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
-        <h1 className="text-2xl font-bold text-secondary-800 mb-4">בעל מקצוע לא נמצא</h1>
-        <Link to="/search">
+      <div className='container mx-auto px-4 py-12 text-center'>
+        <h1 className='text-2xl font-bold text-secondary-800 mb-4'>
+          בעל מקצוע לא נמצא
+        </h1>
+        <Link to='/search'>
           <Button>חזרה לחיפוש</Button>
         </Link>
       </div>
@@ -145,37 +162,37 @@ export default function QuoteRequestPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className='container mx-auto px-4 py-8 max-w-3xl'>
       {/* Back link */}
       <Link
         to={`/professional/${id}`}
-        className="inline-flex items-center gap-1 text-secondary-600 hover:text-primary-600 mb-6"
+        className='inline-flex items-center gap-1 text-secondary-600 hover:text-primary-600 mb-6'
       >
-        <ChevronLeft className="w-4 h-4" />
+        <ChevronLeft className='w-4 h-4' />
         חזרה לפרופיל
       </Link>
 
-      <h1 className="text-2xl font-bold text-secondary-800 mb-6">
+      <h1 className='text-2xl font-bold text-secondary-800 mb-6'>
         בקשת הצעת מחיר
       </h1>
 
       {/* Professional Info */}
-      <Card className="mb-6">
-        <div className="flex items-center gap-4">
+      <Card className='mb-6'>
+        <div className='flex items-center gap-4'>
           <Avatar
             src={professional.profileImage}
             name={`${professional.firstName} ${professional.lastName}`}
-            size="lg"
+            size='lg'
           />
-          <div className="flex-1">
-            <h2 className="font-semibold text-secondary-800">
+          <div className='flex-1'>
+            <h2 className='font-semibold text-secondary-800'>
               {professional.firstName} {professional.lastName}
             </h2>
-            <p className="text-secondary-600">{professional.categoryName}</p>
+            <p className='text-secondary-600'>{professional.categoryName}</p>
             <RatingStars
               rating={professional.rating.overall}
               reviewCount={professional.reviewCount}
-              size="sm"
+              size='sm'
             />
           </div>
         </div>
@@ -183,12 +200,12 @@ export default function QuoteRequestPage() {
 
       {/* Quote Form */}
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Card className="mb-6">
-          <h3 className="text-lg font-semibold text-secondary-800 mb-4">
+        <Card className='mb-6'>
+          <h3 className='text-lg font-semibold text-secondary-800 mb-4'>
             פרטי הבקשה
           </h3>
 
-          <div className="space-y-6">
+          <div className='space-y-6'>
             {/* Dynamic Questions */}
             {questions.map((question) => (
               <div key={question.id}>
@@ -196,44 +213,66 @@ export default function QuoteRequestPage() {
                   <Select
                     label={question.question}
                     required={question.required}
-                    options={question.options.map((opt) => ({ value: opt, label: opt }))}
-                    placeholder="בחר אפשרות"
+                    options={question.options.map((opt) => ({
+                      value: opt,
+                      label: opt,
+                    }))}
+                    placeholder='בחר אפשרות'
                     {...register(`answers.${question.id}` as const, {
                       required: question.required && 'שדה חובה',
                     })}
-                    error={(errors.answers as Record<string, { message?: string }>)?.[question.id]?.message}
+                    error={
+                      (
+                        errors.answers as Record<string, { message?: string }>
+                      )?.[question.id]?.message
+                    }
                   />
                 ) : question.type === 'number' ? (
                   <Input
-                    type="number"
+                    type='number'
                     label={question.question}
                     required={question.required}
                     {...register(`answers.${question.id}` as const, {
                       required: question.required && 'שדה חובה',
                       valueAsNumber: true,
                     })}
-                    error={(errors.answers as Record<string, { message?: string }>)?.[question.id]?.message}
+                    error={
+                      (
+                        errors.answers as Record<string, { message?: string }>
+                      )?.[question.id]?.message
+                    }
                   />
                 ) : (
                   <div>
-                    <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    <label className='block text-sm font-medium text-secondary-700 mb-2'>
                       {question.question}
-                      {question.required && <span className="text-error mr-1">*</span>}
+                      {question.required && (
+                        <span className='text-error mr-1'>*</span>
+                      )}
                     </label>
                     <textarea
                       rows={3}
                       className={classNames(
                         'w-full px-4 py-3 border rounded-lg text-base transition-colors duration-200 resize-none',
                         'focus:outline-none focus:ring-2 focus:border-primary-500 focus:ring-primary-500/20',
-                        'border-secondary-300'
+                        'border-secondary-300',
                       )}
                       {...register(`answers.${question.id}` as const, {
                         required: question.required && 'שדה חובה',
                       })}
                     />
-                    {(errors.answers as Record<string, { message?: string }>)?.[question.id]?.message && (
-                      <p className="mt-1 text-sm text-error">
-                        {(errors.answers as Record<string, { message?: string }>)[question.id].message}
+                    {(errors.answers as Record<string, { message?: string }>)?.[
+                      question.id
+                    ]?.message && (
+                      <p className='mt-1 text-sm text-error'>
+                        {
+                          (
+                            errors.answers as Record<
+                              string,
+                              { message?: string }
+                            >
+                          )[question.id].message
+                        }
                       </p>
                     )}
                   </div>
@@ -243,13 +282,13 @@ export default function QuoteRequestPage() {
 
             {/* Additional Description */}
             <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-2">
+              <label className='block text-sm font-medium text-secondary-700 mb-2'>
                 הערות נוספות
               </label>
               <textarea
                 rows={3}
-                placeholder="פרטים נוספים שחשוב שבעל המקצוע ידע..."
-                className="w-full px-4 py-3 border border-secondary-300 rounded-lg text-base transition-colors duration-200 resize-none focus:outline-none focus:ring-2 focus:border-primary-500 focus:ring-primary-500/20"
+                placeholder='פרטים נוספים שחשוב שבעל המקצוע ידע...'
+                className='w-full px-4 py-3 border border-secondary-300 rounded-lg text-base transition-colors duration-200 resize-none focus:outline-none focus:ring-2 focus:border-primary-500 focus:ring-primary-500/20'
                 {...register('description')}
               />
             </div>
@@ -257,19 +296,19 @@ export default function QuoteRequestPage() {
         </Card>
 
         {/* Urgency and Response Method */}
-        <Card className="mb-6">
-          <h3 className="text-lg font-semibold text-secondary-800 mb-4">
+        <Card className='mb-6'>
+          <h3 className='text-lg font-semibold text-secondary-800 mb-4'>
             העדפות
           </h3>
 
-          <div className="space-y-6">
+          <div className='space-y-6'>
             {/* Urgency */}
             <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-3">
-                <Clock className="w-4 h-4 inline ml-1" />
+              <label className='block text-sm font-medium text-secondary-700 mb-3'>
+                <Clock className='w-4 h-4 inline ml-1' />
                 דחיפות
               </label>
-              <div className="flex flex-wrap gap-3">
+              <div className='flex flex-wrap gap-3'>
                 {URGENCY_LEVELS.map((level) => (
                   <label
                     key={level.value}
@@ -277,13 +316,13 @@ export default function QuoteRequestPage() {
                       'flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-colors',
                       watch('urgency') === level.value
                         ? 'border-primary-500 bg-primary-50'
-                        : 'border-secondary-200 hover:border-primary-300'
+                        : 'border-secondary-200 hover:border-primary-300',
                     )}
                   >
                     <input
-                      type="radio"
+                      type='radio'
                       value={level.value}
-                      className="hidden"
+                      className='hidden'
                       {...register('urgency')}
                     />
                     <span className={level.color}>{level.label}</span>
@@ -294,28 +333,30 @@ export default function QuoteRequestPage() {
 
             {/* Response Method */}
             <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-3">
+              <label className='block text-sm font-medium text-secondary-700 mb-3'>
                 אופן קבלת התגובה
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <label
                   className={classNames(
                     'flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors',
                     responseMethod === 'system'
                       ? 'border-primary-500 bg-primary-50'
-                      : 'border-secondary-200 hover:border-primary-300'
+                      : 'border-secondary-200 hover:border-primary-300',
                   )}
                 >
                   <input
-                    type="radio"
-                    value="system"
-                    className="hidden"
+                    type='radio'
+                    value='system'
+                    className='hidden'
                     {...register('responseMethod')}
                   />
-                  <MessageSquare className="w-5 h-5 text-primary-600" />
+                  <MessageSquare className='w-5 h-5 text-primary-600' />
                   <div>
-                    <div className="font-medium text-secondary-800">במערכת</div>
-                    <div className="text-sm text-secondary-500">קבל תגובה דרך האזור האישי</div>
+                    <div className='font-medium text-secondary-800'>במערכת</div>
+                    <div className='text-sm text-secondary-500'>
+                      קבל תגובה דרך האזור האישי
+                    </div>
                   </div>
                 </label>
                 <label
@@ -323,19 +364,21 @@ export default function QuoteRequestPage() {
                     'flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors',
                     responseMethod === 'phone'
                       ? 'border-primary-500 bg-primary-50'
-                      : 'border-secondary-200 hover:border-primary-300'
+                      : 'border-secondary-200 hover:border-primary-300',
                   )}
                 >
                   <input
-                    type="radio"
-                    value="phone"
-                    className="hidden"
+                    type='radio'
+                    value='phone'
+                    className='hidden'
                     {...register('responseMethod')}
                   />
-                  <Phone className="w-5 h-5 text-primary-600" />
+                  <Phone className='w-5 h-5 text-primary-600' />
                   <div>
-                    <div className="font-medium text-secondary-800">טלפון</div>
-                    <div className="text-sm text-secondary-500">בעל המקצוע יתקשר אליך</div>
+                    <div className='font-medium text-secondary-800'>טלפון</div>
+                    <div className='text-sm text-secondary-500'>
+                      בעל המקצוע יתקשר אליך
+                    </div>
                   </div>
                 </label>
               </div>
@@ -344,21 +387,24 @@ export default function QuoteRequestPage() {
         </Card>
 
         {/* Notice */}
-        <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg mb-6">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-700">
-            <p className="font-medium mb-1">שימו לב:</p>
-            <p>שליחת בקשה להצעת מחיר היא ללא התחייבות. בעל המקצוע יחזור אליכם עם הצעה מפורטת.</p>
+        <div className='flex items-start gap-3 p-4 bg-blue-50 rounded-lg mb-6'>
+          <AlertCircle className='w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5' />
+          <div className='text-sm text-blue-700'>
+            <p className='font-medium mb-1'>שימו לב:</p>
+            <p>
+              שליחת בקשה להצעת מחיר היא ללא התחייבות. בעל המקצוע יחזור אליכם עם
+              הצעה מפורטת.
+            </p>
           </div>
         </div>
 
         {/* Submit */}
-        <div className="flex gap-3">
-          <Button type="submit" isLoading={isSubmitting} fullWidth size="lg">
+        <div className='flex gap-3'>
+          <Button type='submit' isLoading={isSubmitting} fullWidth size='lg'>
             שלח בקשה
           </Button>
           <Link to={`/professional/${id}`}>
-            <Button type="button" variant="outline" size="lg">
+            <Button type='button' variant='outline' size='lg'>
               ביטול
             </Button>
           </Link>

@@ -35,12 +35,8 @@ export interface RegisterData {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
   password: string;
   confirmPassword: string;
-  city?: string;
-  gender?: Gender;
-  acceptTerms: boolean;
 }
 
 export interface AuthResponse {

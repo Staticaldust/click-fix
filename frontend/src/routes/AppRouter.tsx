@@ -36,11 +36,14 @@ const ReviewsPage = lazy(() => import('../pages/admin/ReviewsPage'));
 const CategoriesPage = lazy(() => import('../pages/admin/CategoriesPage'));
 
 function AppContent() {
-  const { checkAuth } = useAuthStore();
+  const { checkAuth, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    // Wait for zustand persist to hydrate before checking auth
+    if (_hasHydrated) {
+      checkAuth();
+    }
+  }, [_hasHydrated]);
 
   return (
     <Suspense fallback={<PageLoader />}>
