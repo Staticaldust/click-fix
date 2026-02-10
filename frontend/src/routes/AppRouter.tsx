@@ -71,11 +71,9 @@ function AppContent() {
           </Route>
         </Route>
 
-        {/* Quote request route (needs auth but accessible from professional page) */}
-        <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
-          <Route element={<MainLayout />}>
-            <Route path="/professional/:id/quote" element={<QuoteRequestPage />} />
-          </Route>
+        {/* Quote request route (accessible to all - will create account if needed) */}
+        <Route element={<MainLayout />}>
+          <Route path="/professional/:id/quote" element={<QuoteRequestPage />} />
         </Route>
 
         {/* Professional registration (public) */}

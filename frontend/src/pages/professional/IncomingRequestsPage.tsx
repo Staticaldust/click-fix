@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import {
   FileText,
   Clock,
@@ -6,9 +7,10 @@ import {
   MessageSquare,
   CheckCircle,
 } from 'lucide-react';
-import { Card, Button, Select, Avatar, Modal, Input } from '../../components/common';
+import { Card, Button, Select, Avatar, Modal, Input, PageLoader } from '../../components/common';
 import { formatDate, classNames } from '../../utils/helpers';
 import { QUOTE_STATUS_LABELS } from '../../utils/constants';
+import { quoteService } from '../../services/quote.service';
 import type { QuoteRequest, QuoteStatus } from '../../types/quote.types';
 
 // Mock data
@@ -86,7 +88,8 @@ const urgencyLabels: Record<string, string> = {
 
 export default function IncomingRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [requests] = useState<QuoteRequest[]>(mockRequests);
+  const [requests, setRequests] = useState<QuoteRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<QuoteRequest | null>(null);
   const [showResponseModal, setShowResponseModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,7 +97,26 @@ export default function IncomingRequestsPage() {
     price: '',
     availability: '',
     notes: '',
+    validUntil: '',
   });
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const data = await quoteService.getIncomingRequests();
+        setRequests(data.quotes);
+      } catch (error) {
+        console.error('Failed to fetch requests:', error);
+        toast.error('שגיאה בטעינת הבקשות');
+        // Fallback to mock data
+        setRequests(mockRequests);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRequests();
+  }, []);
 
   const filteredRequests = statusFilter
     ? requests.filter((r) => r.status === statusFilter)
@@ -107,6 +129,8 @@ export default function IncomingRequestsPage() {
     ...Object.entries(QUOTE_STATUS_LABELS).map(([value, label]) => ({ value, label })),
   ];
 
+  if (isLoading) return <PageLoader />;
+
   const handleRespond = (request: QuoteRequest) => {
     setSelectedRequest(request);
     setShowResponseModal(true);
@@ -114,15 +138,33 @@ export default function IncomingRequestsPage() {
 
   const submitResponse = async () => {
     if (!selectedRequest) return;
+
+    if (!responseData.price || !responseData.availability || !responseData.validUntil) {
+      toast.error('אנא מלא את כל השדות הנדרשים');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      console.log('Submitting response:', { requestId: selectedRequest.id, ...responseData });
-      // In production: await quoteService.respond(selectedRequest.id, responseData);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await quoteService.respond(selectedRequest.id, {
+        price: Number(responseData.price),
+        availability: responseData.availability,
+        notes: responseData.notes || undefined,
+        validUntil: new Date(responseData.validUntil),
+      });
+
+      toast.success('הצעת המחיר נשלחה בהצלחה!');
+
+      // Refresh requests list
+      const data = await quoteService.getIncomingRequests();
+      setRequests(data.quotes);
+
       setShowResponseModal(false);
-      setResponseData({ price: '', availability: '', notes: '' });
-    } catch (error) {
+      setResponseData({ price: '', availability: '', notes: '', validUntil: '' });
+    } catch (error: any) {
       console.error('Failed to submit response:', error);
+      const errorMessage = error.response?.data?.message || 'שגיאה בשליחת ההצעה';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -278,6 +320,14 @@ export default function IncomingRequestsPage() {
               placeholder="לדוגמה: יום ראשון בבוקר"
             />
 
+            <Input
+              label="תוקף ההצעה עד"
+              type="date"
+              required
+              value={responseData.validUntil}
+              onChange={(e) => setResponseData({ ...responseData, validUntil: e.target.value })}
+            />
+
             <div>
               <label className="block text-sm font-medium text-secondary-700 mb-2">
                 הערות נוספות
@@ -296,7 +346,7 @@ export default function IncomingRequestsPage() {
                 onClick={submitResponse}
                 isLoading={isSubmitting}
                 fullWidth
-                disabled={!responseData.price || !responseData.availability}
+                disabled={!responseData.price || !responseData.availability || !responseData.validUntil}
               >
                 <CheckCircle className="w-5 h-5" />
                 שלח הצעה

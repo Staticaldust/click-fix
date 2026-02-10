@@ -14,16 +14,27 @@ export interface AuthRequest extends Request {
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password, address } = req.body;
-    
+    const { firstName, lastName, email, password, address } = req.body;
+    console.log('Received registration data:', {
+      firstName,
+      lastName,
+      email,
+      password,
+      address,
+    });
+
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+      return res
+        .status(400)
+        .json({ message: 'Email and password are required' });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ message: 'User already exists with this email' });
+      return res
+        .status(409)
+        .json({ message: 'User already exists with this email' });
     }
 
     // Hash password
@@ -31,20 +42,27 @@ export const register = async (req: Request, res: Response) => {
 
     // Create new user
     const newUser = await User.create({
-      name: name || null,
+      firstName: firstName || null,
+      lastName: lastName || null,
       address: address || null,
       id: Math.floor(Math.random() * 1000000),
       email,
       password: hashedPassword,
       createdAt: new Date(),
       updatedAt: new Date(),
-      lastEntrance:new Date()
+      lastEntrance: new Date(),
     });
 
     const payload = { id: newUser.get('id'), email: newUser.get('email') };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
 
-    const safeUser = { id: newUser.get('id'), name: newUser.get('name'), email: newUser.get('email') };
+    const safeUser = {
+      id: newUser.get('id'),
+      firstName: newUser.get('firstName'),
+      lastName: newUser.get('lastName'),
+      email: newUser.get('email'),
+      role: newUser.get('role') || 'customer',
+    };
     res.status(201).json({ token, user: safeUser });
   } catch (err) {
     res.status(500).json({ message: 'Registration error', error: err });
@@ -54,7 +72,10 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message: 'Email and password are required' });
+    if (!email || !password)
+      return res
+        .status(400)
+        .json({ message: 'Email and password are required' });
 
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
@@ -62,12 +83,19 @@ export const login = async (req: Request, res: Response) => {
     // Compare hashed passwords
     const hashedPassword = (user.get('password') as string) || '';
     const isPasswordValid = await bcrypt.compare(password, hashedPassword);
-    if (!isPasswordValid) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!isPasswordValid)
+      return res.status(401).json({ message: 'Invalid credentials' });
 
     const payload = { id: user.get('id'), email: user.get('email') };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
 
-    const safeUser = { id: user.get('id'), name: user.get('name'), email: user.get('email') };
+    const safeUser = {
+      id: user.get('id'),
+      firstName: user.get('firstName'),
+      lastName: user.get('lastName'),
+      email: user.get('email'),
+      role: user.get('role') || 'customer',
+    };
     res.json({ token, user: safeUser });
   } catch (err) {
     res.status(500).json({ message: 'Login error', error: err });
@@ -85,7 +113,13 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const safeUser = { id: user.get('id'), name: user.get('name'), email: user.get('email') };
+    const safeUser = {
+      id: user.get('id'),
+      firstName: user.get('firstName'),
+      lastName: user.get('lastName'),
+      email: user.get('email'),
+      role: user.get('role') || 'customer',
+    };
     res.json(safeUser);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching profile', error: err });

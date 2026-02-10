@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Clock, ChevronLeft, Search } from 'lucide-react';
-import { Card, Button, Select, Avatar } from '../../components/common';
+import { Card, Button, Select, Avatar, PageLoader } from '../../components/common';
 import { formatDate, classNames } from '../../utils/helpers';
 import { QUOTE_STATUS_LABELS, URGENCY_LEVELS } from '../../utils/constants';
+import { quoteService } from '../../services/quote.service';
 import type { QuoteRequest, QuoteStatus } from '../../types/quote.types';
 
 // Mock data
@@ -71,11 +72,31 @@ const urgencyColors: Record<string, string> = {
 
 export default function QuotesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [quotes] = useState<QuoteRequest[]>(mockQuotes);
+  const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      try {
+        const data = await quoteService.getMyQuotes();
+        setQuotes(data.quotes);
+      } catch (error) {
+        console.error('Failed to fetch quotes:', error);
+        // Fallback to mock data if API fails
+        setQuotes(mockQuotes);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchQuotes();
+  }, []);
 
   const filteredQuotes = statusFilter
     ? quotes.filter((q) => q.status === statusFilter)
     : quotes;
+
+  if (isLoading) return <PageLoader />;
 
   const statusOptions = [
     { value: '', label: 'כל הסטטוסים' },

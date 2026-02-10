@@ -3,7 +3,8 @@ import { sequelize } from '../config/database';
 
 export class User extends Model {
   declare id: number;
-  declare name: string;
+  declare firstName: string;
+  declare lastName: string;
   declare email: string;
   declare password: string | null;
   declare address: string | null;
@@ -19,9 +20,15 @@ User.init(
       primaryKey: true,
       autoIncrement: true,
     },
-    name: {
-      type: DataTypes.TEXT,
+    firstName: {
+      type: DataTypes.STRING,
       allowNull: true,
+      field: 'first_name',
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'last_name',
     },
     email: {
       type: DataTypes.STRING,

@@ -28,17 +28,15 @@ export const adaptServerAuthToUser = (
   serverAuth: ServerAuthResponse,
   role: UserRole = 'customer'
 ): { user: User; token: string } => {
-  const nameParts = (serverAuth.user.name || '').split(' ');
-
   return {
     token: serverAuth.token,
     user: {
       id: serverAuth.user.id.toString(),
       email: serverAuth.user.email,
-      firstName: nameParts[0] || '',
-      lastName: nameParts.slice(1).join(' ') || '',
+      firstName: serverAuth.user.firstName || '',
+      lastName: serverAuth.user.lastName || '',
       phone: '',
-      role,
+      role: (serverAuth.user.role as UserRole) || role,
       status: 'active',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -50,13 +48,11 @@ export const adaptServerAuthToUser = (
  * Convert full server user to frontend User
  */
 export const adaptServerUserToUser = (serverUser: ServerUser, role: UserRole = 'customer'): User => {
-  const nameParts = (serverUser.name || '').split(' ');
-
   return {
     id: serverUser.id.toString(),
     email: serverUser.email,
-    firstName: nameParts[0] || '',
-    lastName: nameParts.slice(1).join(' ') || '',
+    firstName: serverUser.firstName || '',
+    lastName: serverUser.lastName || '',
     phone: '',
     city: serverUser.address || undefined,
     role,
@@ -75,14 +71,13 @@ export const adaptServerUserToUser = (serverUser: ServerUser, role: UserRole = '
  */
 export const adaptEmployeeToProfessional = (employee: ServerEmployee): Professional => {
   const rating = calculateRatingFromServerReviews(employee.reviews || []);
-  const nameParts = (employee.name || '').split(' ');
   const category = employee.categories?.[0];
 
   return {
     id: employee.id.toString(),
     email: employee.email || '',
-    firstName: nameParts[0] || '',
-    lastName: nameParts.slice(1).join(' ') || '',
+    firstName: employee.firstName || '',
+    lastName: employee.lastName || '',
     phone: employee.phone,
     city: employee.area || undefined,
     role: 'professional',
@@ -158,7 +153,7 @@ export const adaptServerReviewToReview = (serverReview: ServerReview): Review =>
     id: serverReview.id.toString(),
     professionalId: serverReview.employeeId?.toString() || '',
     customerId: serverReview.userId?.toString() || '',
-    customerName: serverReview.user?.name || 'משתמש אנונימי',
+    customerName: serverReview.user ? `${serverReview.user.firstName} ${serverReview.user.lastName}` : 'משתמש אנונימי',
     ratings: {
       reliability: serverReview.performanceRate || 0,
       service: serverReview.serviceRate || 0,

@@ -30,7 +30,8 @@ export type ServerArea =
  */
 export interface ServerUser {
   id: number;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   password?: string;
   address: string | null;
@@ -46,7 +47,8 @@ export interface ServerUser {
  */
 export interface ServerEmployee {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
   area: ServerArea | string | null;
   gender: string | null;
   email: string | null;
@@ -100,8 +102,10 @@ export interface ServerAuthResponse {
   token: string;
   user: {
     id: number;
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
+    role: string;
   };
 }
 
@@ -111,7 +115,8 @@ export interface ServerLoginRequest {
 }
 
 export interface ServerRegisterRequest {
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   password: string;
   address?: string;

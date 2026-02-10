@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { toast } from 'react-toastify';
 import {
   ChevronLeft,
   MessageSquare,
@@ -19,6 +20,8 @@ import {
 } from '../../components/common';
 import { URGENCY_LEVELS } from '../../utils/constants';
 import { classNames } from '../../utils/helpers';
+import { quoteService } from '../../services/quote.service';
+import { useAuthStore } from '../../store/authStore';
 import type { Professional } from '../../types/professional.types';
 import type { QuoteQuestion } from '../../types/quote.types';
 
@@ -79,6 +82,8 @@ const mockQuestions: QuoteQuestion[] = [
 ];
 
 interface FormData {
+  guestName?: string;
+  guestEmail?: string;
   answers: Record<string, string | number>;
   description: string;
   urgency: 'low' | 'medium' | 'high';
@@ -87,10 +92,10 @@ interface FormData {
 
 export default function QuoteRequestPage() {
   const { id } = useParams<{ id: string }>();
-  console.log({ id });
 
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isAuthenticated } = useAuthStore();
 
   // In production, fetch professional data
   const professional = mockProfessional;
@@ -104,6 +109,8 @@ export default function QuoteRequestPage() {
     formState: { errors },
   } = useForm<FormData>({
     defaultValues: {
+      guestName: '',
+      guestEmail: '',
       answers: {},
       description: '',
       urgency: 'medium',
@@ -124,7 +131,7 @@ export default function QuoteRequestPage() {
         }),
       );
 
-      const requestData = {
+      const requestData: any = {
         professionalId: id!,
         answers: answersArray,
         description: data.description,
@@ -132,15 +139,26 @@ export default function QuoteRequestPage() {
         responseMethod: data.responseMethod,
       };
 
-      console.log('Submitting quote request:', requestData);
-      // In production: await quoteService.create(requestData);
+      // Add guest info if user is not authenticated
+      if (!isAuthenticated) {
+        requestData.guestName = data.guestName;
+        requestData.guestEmail = data.guestEmail;
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await quoteService.create(requestData);
 
-      navigate('/quotes', { state: { success: true } });
-    } catch (error) {
-      console.error('Failed to submit quote request:', error);
+      toast.success('בקשת הצעת המחיר נשלחה בהצלחה!');
+
+      // If guest, redirect to home with message
+      if (!isAuthenticated) {
+        toast.info('תקבל תשובה למייל שהזנת');
+        navigate('/', { state: { success: true } });
+      } else {
+        navigate('/quotes', { state: { success: true } });
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'שגיאה בשליחת הבקשה. אנא נסה שוב.';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -200,6 +218,40 @@ export default function QuoteRequestPage() {
 
       {/* Quote Form */}
       <form onSubmit={handleSubmit(onSubmit)}>
+        {/* Guest User Fields - only show if not authenticated */}
+        {!isAuthenticated && (
+          <Card className='mb-6'>
+            <h3 className='text-lg font-semibold text-secondary-800 mb-4'>
+              פרטי קשר שלך
+            </h3>
+            <div className='space-y-4'>
+              <Input
+                label='שם מלא'
+                placeholder='הזן את שמך המלא'
+                required
+                error={errors.guestName?.message}
+                {...register('guestName', {
+                  required: !isAuthenticated && 'שדה חובה',
+                })}
+              />
+              <Input
+                label='אימייל'
+                type='email'
+                placeholder='example@email.com'
+                required
+                error={errors.guestEmail?.message}
+                {...register('guestEmail', {
+                  required: !isAuthenticated && 'שדה חובה',
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'כתובת אימייל לא תקינה',
+                  },
+                })}
+              />
+            </div>
+          </Card>
+        )}
+
         <Card className='mb-6'>
           <h3 className='text-lg font-semibold text-secondary-800 mb-4'>
             פרטי הבקשה
@@ -386,6 +438,23 @@ export default function QuoteRequestPage() {
           </div>
         </Card>
 
+        {/* Form Errors */}
+        {Object.keys(errors).length > 0 && (
+          <div className='flex items-start gap-3 p-4 bg-red-50 rounded-lg mb-6'>
+            <AlertCircle className='w-5 h-5 text-red-600 flex-shrink-0 mt-0.5' />
+            <div className='text-sm text-red-700'>
+              <p className='font-medium mb-1'>יש שגיאות בטופס:</p>
+              <ul className='list-disc list-inside'>
+                {Object.entries(errors).map(([key, error]: [string, any]) => (
+                  <li key={key}>
+                    {key}: {error?.message || 'שדה חובה'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Notice */}
         <div className='flex items-start gap-3 p-4 bg-blue-50 rounded-lg mb-6'>
           <AlertCircle className='w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5' />
@@ -400,7 +469,12 @@ export default function QuoteRequestPage() {
 
         {/* Submit */}
         <div className='flex gap-3'>
-          <Button type='submit' isLoading={isSubmitting} fullWidth size='lg'>
+          <Button
+            type='submit'
+            isLoading={isSubmitting}
+            fullWidth
+            size='lg'
+          >
             שלח בקשה
           </Button>
           <Link to={`/professional/${id}`}>

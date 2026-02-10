@@ -54,8 +54,8 @@ const mockProfessional: Professional = {
     { id: '4', name: 'התקנת תאורה', minPrice: 80, maxPrice: 250 },
   ],
   certificates: [
-    { id: '1', name: 'תעודת חשמלאי מוסמך', fileUrl: '#', fileType: 'pdf', uploadedAt: new Date() },
-    { id: '2', name: 'רישיון עבודה בגובה', fileUrl: '#', fileType: 'pdf', uploadedAt: new Date() },
+    { id: '1', name: 'תעודת חשמלאי מוסמך', fileUrl: '/certificates/sample-certificate.pdf', fileType: 'pdf', uploadedAt: new Date() },
+    { id: '2', name: 'רישיון עבודה בגובה', fileUrl: '/certificates/sample-certificate.pdf', fileType: 'pdf', uploadedAt: new Date() },
   ],
   rating: {
     overall: 4.8,

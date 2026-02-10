@@ -3,8 +3,9 @@ import { sequelize } from '../config/database';
 
 export class Employee extends Model {
   declare id: number;
-  declare name: string;
-  
+  declare firstName: string;
+  declare lastName: string;
+
   declare area: string | null;
   declare gender: string | null;
   declare email: string | null;
@@ -22,9 +23,15 @@ Employee.init(
       primaryKey: true,
       autoIncrement: true,
     },
-    name: {
+    firstName: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: 'first_name',
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'last_name',
     },
     area: {
       type: DataTypes.STRING,
