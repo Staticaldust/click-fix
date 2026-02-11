@@ -5,16 +5,14 @@
  * These adapters convert server responses to UI-compatible formats.
  */
 
-import type { User, UserRole } from '../types/user.types';
-import type { Professional, RatingBreakdown } from '../types/professional.types';
-import type { Review } from '../types/review.types';
-import type { Category } from '../types/category.types';
+import type { Chat, Message } from '../types/chat.types';
+import type { Notification } from '../types/notification.types';
+import type { Complaint } from '../types/complaint.types';
 import type {
-  ServerUser,
-  ServerEmployee,
-  ServerReview,
-  ServerCategory,
-  ServerAuthResponse,
+  ServerChat,
+  ServerMessage,
+  ServerNotification,
+  ServerComplaint,
 } from '../types/server.types';
 
 // ============================================
@@ -203,5 +201,93 @@ export const adaptServerCategoryToCategory = (serverCategory: ServerCategory): C
     isActive: true,
     order: serverCategory.id,
     professionalCount: 0,
+  };
+};
+
+// ============================================
+// Chat Adapters
+// ============================================
+
+/**
+ * Convert server Chat to frontend Chat format
+ */
+export const adaptServerChatToChat = (serverChat: ServerChat): Chat => {
+  return {
+    id: serverChat.id.toString(),
+    customerId: serverChat.customerId.toString(),
+    customerName: serverChat.customer ? `${serverChat.customer.firstName} ${serverChat.customer.lastName}` : '',
+    professionalId: serverChat.professionalId.toString(),
+    professionalName: serverChat.professional ? `${serverChat.professional.firstName} ${serverChat.professional.lastName}` : '',
+    professionalImage: serverChat.professional?.profileImage || undefined,
+    quoteRequestId: serverChat.quoteRequestId?.toString(),
+    lastMessage: serverChat.lastMessage ? adaptServerMessageToMessage(serverChat.lastMessage) : undefined,
+    unreadCount: serverChat.unreadCount,
+    createdAt: new Date(serverChat.createdAt),
+    updatedAt: new Date(serverChat.updatedAt),
+  };
+};
+
+/**
+ * Convert server Message to frontend Message format
+ */
+export const adaptServerMessageToMessage = (serverMessage: ServerMessage): Message => {
+  return {
+    id: serverMessage.id.toString(),
+    chatId: serverMessage.chatId.toString(),
+    senderId: serverMessage.senderId.toString(),
+    senderType: serverMessage.senderType,
+    type: serverMessage.type,
+    content: serverMessage.content,
+    quoteData: serverMessage.quoteData,
+    imageUrl: serverMessage.imageUrl || undefined,
+    isRead: serverMessage.isRead,
+    createdAt: new Date(serverMessage.createdAt),
+  };
+};
+
+// ============================================
+// Notification Adapters
+// ============================================
+
+/**
+ * Convert server Notification to frontend Notification format
+ */
+export const adaptServerNotificationToNotification = (serverNotification: ServerNotification): Notification => {
+  return {
+    id: serverNotification.id.toString(),
+    userId: serverNotification.userId.toString(),
+    type: serverNotification.type,
+    title: serverNotification.title,
+    content: serverNotification.content,
+    link: serverNotification.link || undefined,
+    channels: serverNotification.channels as Notification['channels'],
+    isRead: serverNotification.isRead,
+    createdAt: new Date(serverNotification.createdAt),
+  };
+};
+
+// ============================================
+// Complaint Adapters
+// ============================================
+
+/**
+ * Convert server Complaint to frontend Complaint format
+ */
+export const adaptServerComplaintToComplaint = (serverComplaint: ServerComplaint): Complaint => {
+  return {
+    id: serverComplaint.id.toString(),
+    userId: serverComplaint.userId.toString(),
+    userName: serverComplaint.user ? `${serverComplaint.user.firstName} ${serverComplaint.user.lastName}` : '',
+    type: serverComplaint.type,
+    targetProfessionalId: serverComplaint.targetProfessionalId?.toString(),
+    targetProfessionalName: serverComplaint.targetProfessional ? `${serverComplaint.targetProfessional.firstName} ${serverComplaint.targetProfessional.lastName}` : undefined,
+    subject: serverComplaint.subject,
+    content: serverComplaint.content,
+    status: serverComplaint.status,
+    adminNotes: serverComplaint.adminNotes || undefined,
+    createdAt: new Date(serverComplaint.createdAt),
+    updatedAt: new Date(serverComplaint.updatedAt),
+    resolvedAt: serverComplaint.resolvedAt ? new Date(serverComplaint.resolvedAt) : undefined,
+    resolvedBy: serverComplaint.resolvedBy?.toString(),
   };
 };

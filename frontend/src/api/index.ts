@@ -17,6 +17,15 @@ export { categoryApi, CATEGORY_ENDPOINTS } from './category.api';
 // Review API
 export { reviewApi, REVIEW_ENDPOINTS } from './review.api';
 
+// Chat API
+export { chatApi } from './chat.api';
+
+// Notification API
+export { notificationApi } from './notification.api';
+
+// Complaint API
+export { complaintApi } from './complaint.api';
+
 // Adapters - for direct use when needed
 export {
   adaptServerAuthToUser,

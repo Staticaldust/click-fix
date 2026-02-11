@@ -93,39 +93,64 @@ export const getEmployeesByRating = (req: Request, res: Response) => {
   }
 };
 
-export const createEmployee = (req: Request, res: Response) => {
+export const createEmployee = async (req: Request, res: Response) => {
   try {
-    const { name, image, area, categoryId, gender, email, phone } = req.body;
+    const { firstName, lastName, area, gender, email, phone, description, yearsOfExperience, workingHours, services, certificates } = req.body;
 
-    if (!name || !area || !categoryId || !gender || !email || !phone) {
+    if (!firstName || !lastName || !phone) {
       res.status(400).json({ message: "Missing required fields" });
       return;
     }
 
-    // Create employee handler would go here if needed
-    res.status(201).json({});
+    const employee = await Employee.create({
+      firstName,
+      lastName,
+      area,
+      gender,
+      email,
+      phone,
+      description,
+      yearsOfExperience,
+      workingHours,
+      services,
+      certificates,
+    });
+
+    res.status(201).json(employee);
   } catch (error) {
     res.status(500).json({ message: "Error creating employee", error });
   }
 };
 
-export const updateEmployee = (req: Request, res: Response) => {
+export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    // Update employee handler would go here if needed
-    res.status(200).json({});
+    const employee = await Employee.findByPk(Number(id));
+    if (!employee) {
+      res.status(404).json({ message: "Employee not found" });
+      return;
+    }
+
+    await employee.update(updates);
+    res.status(200).json(employee);
   } catch (error) {
     res.status(500).json({ message: "Error updating employee", error });
   }
 };
 
-export const deleteEmployee = (req: Request, res: Response) => {
+export const deleteEmployee = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Delete employee handler would go here if needed
+    const employee = await Employee.findByPk(Number(id));
+    if (!employee) {
+      res.status(404).json({ message: "Employee not found" });
+      return;
+    }
+
+    await employee.destroy();
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ message: "Error deleting employee", error });

@@ -70,39 +70,51 @@ export const getUserByUsername = (req: Request, res: Response) => {
   }
 };
 
-export const createUser = (req: Request, res: Response) => {
+export const createUser = async (req: Request, res: Response) => {
   try {
-    const { username, email, address, image } = req.body;
+    const { firstName, lastName, email, password, address } = req.body;
 
-    if (!username || !email || !address) {
+    if (!firstName || !lastName || !email) {
       res.status(400).json({ message: "Missing required fields" });
       return;
     }
 
-    // Create user handler would go here if needed
-    res.status(201).json({});
+    const user = await User.create({ firstName, lastName, email, password, address });
+    res.status(201).json(user);
   } catch (error) {
     res.status(500).json({ message: "Error creating user", error });
   }
 };
 
-export const updateUser = (req: Request, res: Response) => {
+export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    // Update user handler would go here if needed
-    res.status(200).json({});
+    const user = await User.findByPk(Number(id));
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    await user.update(updates);
+    res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ message: "Error updating user", error });
   }
 };
 
-export const deleteUser = (req: Request, res: Response) => {
+export const deleteUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Delete user handler would go here if needed
+    const user = await User.findByPk(Number(id));
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    await user.destroy();
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ message: "Error deleting user", error });

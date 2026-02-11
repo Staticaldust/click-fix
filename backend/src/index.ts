@@ -10,6 +10,9 @@ import userRoutes from "./routes/userRoutes";
 import employeeRoutes from "./routes/employeeRoutes";
 import reviewRoutes from "./routes/reviewRoutes";
 import quoteRoutes from "./routes/quoteRoutes";
+import chatRoutes from "./routes/chatRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
+import complaintRoutes from "./routes/complaintRoutes";
 
 const app = express();
 app.use(cors());
@@ -27,6 +30,9 @@ app.use("/api/users", userRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/quotes", quoteRoutes);
+app.use("/api/chats", chatRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/complaints", complaintRoutes);
 
 // 404 handler
 app.use((req, res) => {

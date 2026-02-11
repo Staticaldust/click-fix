@@ -75,55 +75,51 @@ export const getReviewsByRating = (req: Request, res: Response) => {
   }
 };
 
-export const createReview = (req: Request, res: Response) => {
+export const createReview = async (req: Request, res: Response) => {
   try {
-    const {
-      reviewerId,
-      employeeId,
-      rate,
-      priceRate,
-      performanceRate,
-      serviceRate,
-      comment,
-    } = req.body;
+    const { userId, employeeId, categoryId, priceRate, serviceRate, performanceRate, comment } = req.body;
 
-    if (
-      !reviewerId ||
-      !employeeId ||
-      rate === undefined ||
-      priceRate === undefined ||
-      performanceRate === undefined ||
-      serviceRate === undefined ||
-      !comment
-    ) {
+    if (!userId || !employeeId || priceRate === undefined || serviceRate === undefined || performanceRate === undefined) {
       res.status(400).json({ message: "Missing required fields" });
       return;
     }
 
-    // Create review handler would go here if needed
-    res.status(201).json({});
+    const review = await Review.create({ userId, employeeId, categoryId, priceRate, serviceRate, performanceRate, comment });
+    res.status(201).json(review);
   } catch (error) {
     res.status(500).json({ message: "Error creating review", error });
   }
 };
 
-export const updateReview = (req: Request, res: Response) => {
+export const updateReview = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    // Update review handler would go here if needed
-    res.status(200).json({});
+    const review = await Review.findByPk(Number(id));
+    if (!review) {
+      res.status(404).json({ message: "Review not found" });
+      return;
+    }
+
+    await review.update(updates);
+    res.status(200).json(review);
   } catch (error) {
     res.status(500).json({ message: "Error updating review", error });
   }
 };
 
-export const deleteReview = (req: Request, res: Response) => {
+export const deleteReview = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Delete review handler would go here if needed
+    const review = await Review.findByPk(Number(id));
+    if (!review) {
+      res.status(404).json({ message: "Review not found" });
+      return;
+    }
+
+    await review.destroy();
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ message: "Error deleting review", error });

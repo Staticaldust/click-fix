@@ -12,6 +12,15 @@ export class Employee extends Model {
   declare password: string | null;
   declare phone: string;
   declare lastEntrance: Date | null;
+  declare description: string | null;
+  declare yearsOfExperience: number | null;
+  declare workingHours: any; // JSON
+  declare services: any; // JSON
+  declare certificates: any; // JSON
+  declare profileImage: string | null;
+  declare status: 'pending' | 'approved' | 'rejected' | 'suspended';
+  declare approvedAt: Date | null;
+  declare approvedBy: number | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }
@@ -58,6 +67,52 @@ Employee.init(
     phone: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    yearsOfExperience: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'years_of_experience',
+    },
+    workingHours: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: 'working_hours',
+    },
+    services: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    certificates: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    profileImage: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'profile_image',
+    },
+    status: {
+      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'suspended'),
+      allowNull: false,
+      defaultValue: 'pending',
+    },
+    approvedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'approved_at',
+    },
+    approvedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'approved_by',
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
   },
   {

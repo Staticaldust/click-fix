@@ -94,6 +94,79 @@ export interface ServerReview {
   employee?: ServerEmployee;
 }
 
+/**
+ * Chat from server
+ */
+export interface ServerChat {
+  id: number;
+  customerId: number;
+  professionalId: number;
+  quoteRequestId: number | null;
+  lastMessageId: number | null;
+  unreadCount: number;
+  createdAt: string;
+  updatedAt: string;
+  // Relations
+  customer?: ServerUser;
+  professional?: ServerEmployee;
+  lastMessage?: ServerMessage;
+  messages?: ServerMessage[];
+}
+
+/**
+ * Message from server
+ */
+export interface ServerMessage {
+  id: number;
+  chatId: number;
+  senderId: number;
+  senderType: 'customer' | 'professional';
+  type: 'text' | 'quote' | 'image' | 'system';
+  content: string;
+  quoteData: any | null;
+  imageUrl: string | null;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Notification from server
+ */
+export interface ServerNotification {
+  id: number;
+  userId: number;
+  type: 'new_quote_request' | 'quote_response' | 'new_message' | 'new_review' | 'approval_status' | 'system';
+  title: string;
+  content: string;
+  link: string | null;
+  channels: string[];
+  isRead: boolean;
+  createdAt: string;
+}
+
+/**
+ * Complaint from server
+ */
+export interface ServerComplaint {
+  id: number;
+  userId: number;
+  type: 'professional' | 'system' | 'other';
+  targetProfessionalId: number | null;
+  subject: string;
+  content: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  adminNotes: string | null;
+  resolvedAt: string | null;
+  resolvedBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+  // Relations
+  user?: ServerUser;
+  targetProfessional?: ServerEmployee;
+  resolvedByUser?: ServerUser;
+}
+
 // ============================================
 // Auth Response
 // ============================================
