@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   MapPin,
@@ -21,105 +21,55 @@ import {
 } from '../../components/common';
 import { RATING_LABELS, DAYS_OF_WEEK } from '../../utils/constants';
 import { classNames } from '../../utils/helpers';
+import { professionalService } from '../../services/professional.service';
 import type { Professional } from '../../types/professional.types';
 import type { Review } from '../../types/review.types';
-
-// Mock data - in production this would come from API
-const mockProfessional: Professional = {
-  id: '1',
-  email: 'david@example.com',
-  firstName: 'דוד',
-  lastName: 'כהן',
-  phone: '050-1234567',
-  role: 'professional',
-  status: 'approved',
-  categoryId: 'electrician',
-  categoryName: 'חשמלאי',
-  description: 'חשמלאי מוסמך עם ניסיון של מעל 15 שנה. מתמחה בהתקנות חשמל ביתיות ומסחריות, תיקון תקלות, והתקנת מערכות חכמות. עבודה מקצועית, אמינה ובמחירים הוגנים.',
-  yearsOfExperience: 15,
-  serviceAreas: ['ירושלים', 'בית שמש', 'מודיעין', 'בני ברק'],
-  workingHours: [
-    { day: 'sunday', isWorking: true, startTime: '08:00', endTime: '18:00' },
-    { day: 'monday', isWorking: true, startTime: '08:00', endTime: '18:00' },
-    { day: 'tuesday', isWorking: true, startTime: '08:00', endTime: '18:00' },
-    { day: 'wednesday', isWorking: true, startTime: '08:00', endTime: '18:00' },
-    { day: 'thursday', isWorking: true, startTime: '08:00', endTime: '16:00' },
-    { day: 'friday', isWorking: true, startTime: '08:00', endTime: '13:00' },
-    { day: 'saturday', isWorking: false },
-  ],
-  services: [
-    { id: '1', name: 'תיקון תקלות חשמל', minPrice: 150, maxPrice: 350 },
-    { id: '2', name: 'התקנת נקודות חשמל', minPrice: 100, maxPrice: 200 },
-    { id: '3', name: 'החלפת לוח חשמל', minPrice: 800, maxPrice: 2500 },
-    { id: '4', name: 'התקנת תאורה', minPrice: 80, maxPrice: 250 },
-  ],
-  certificates: [
-    { id: '1', name: 'תעודת חשמלאי מוסמך', fileUrl: '/certificates/sample-certificate.pdf', fileType: 'pdf', uploadedAt: new Date() },
-    { id: '2', name: 'רישיון עבודה בגובה', fileUrl: '/certificates/sample-certificate.pdf', fileType: 'pdf', uploadedAt: new Date() },
-  ],
-  rating: {
-    overall: 4.8,
-    reliability: 4.9,
-    service: 4.7,
-    availability: 4.6,
-    price: 4.8,
-    professionalism: 4.9,
-  },
-  reviewCount: 127,
-  isVerified: true,
-  createdAt: new Date('2020-01-15'),
-  updatedAt: new Date(),
-};
-
-const mockReviews: Review[] = [
-  {
-    id: '1',
-    professionalId: '1',
-    customerId: 'c1',
-    customerName: 'יוסי לוי',
-    ratings: {
-      reliability: 5,
-      service: 5,
-      availability: 5,
-      price: 5,
-      professionalism: 5,
-    },
-    overallRating: 5,
-    content: 'שירות מעולה! דוד הגיע בזמן, איבחן את הבעיה במהירות ותיקן אותה ביעילות. מחיר הוגן ועבודה מקצועית. ממליץ בחום!',
-    createdAt: new Date('2024-01-10'),
-    isVerified: true,
-  },
-  {
-    id: '2',
-    professionalId: '1',
-    customerId: 'c2',
-    customerName: 'רחל כהן',
-    ratings: {
-      reliability: 5,
-      service: 4,
-      availability: 4,
-      price: 5,
-      professionalism: 5,
-    },
-    overallRating: 4.6,
-    content: 'עבודה מצוינת. התקין לנו לוח חשמל חדש והעבודה הייתה נקייה ומסודרת. המחיר היה סביר מאוד.',
-    createdAt: new Date('2024-01-05'),
-    isVerified: true,
-    response: {
-      content: 'תודה רבה רחל! שמחתי לעזור.',
-      createdAt: new Date('2024-01-06'),
-    },
-  },
-];
 
 export default function ProfessionalProfilePage() {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'services'>('overview');
+  const [professional, setProfessional] = useState<Professional | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // In production, fetch data using React Query
-  const professional = mockProfessional;
-  const reviews = mockReviews;
-  const isLoading = false;
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      try {
+        const proData = await professionalService.getById(id);
+        setProfessional(proData);
+
+        // Map reviews from the employee include
+        const proAny = proData as any;
+        if (proAny.reviews) {
+          const mappedReviews: Review[] = proAny.reviews.map((r: any) => ({
+            id: String(r.id),
+            professionalId: String(r.employee_id),
+            customerId: String(r.user_id),
+            customerName: r.user ? `${r.user.firstName || ''} ${r.user.lastName || ''}`.trim() : 'לקוח',
+            ratings: {
+              reliability: r.rating || 0,
+              service: r.rating || 0,
+              availability: r.rating || 0,
+              price: r.rating || 0,
+              professionalism: r.rating || 0,
+            },
+            overallRating: r.rating || 0,
+            content: r.content || '',
+            createdAt: new Date(r.createdAt),
+            isVerified: true,
+          }));
+          setReviews(mappedReviews);
+        }
+      } catch (error) {
+        console.error('Failed to fetch professional:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
 
   if (isLoading) {
     return <PageLoader />;
@@ -136,7 +86,16 @@ export default function ProfessionalProfilePage() {
     );
   }
 
-  const ratingCategories = Object.entries(professional.rating).filter(
+  const proAny = professional as any;
+  const rating = professional.rating || { overall: 0, reliability: 0, service: 0, availability: 0, price: 0, professionalism: 0 };
+  const reviewCount = professional.reviewCount || reviews.length || 0;
+  const serviceAreas = professional.serviceAreas || (proAny.area ? [proAny.area] : []);
+  const workingHours = professional.workingHours || proAny.workingHours || [];
+  const services = professional.services || proAny.services || [];
+  const certificates = professional.certificates || proAny.certificates || [];
+  const categoryName = professional.categoryName || (proAny.categories?.[0]?.name) || '';
+
+  const ratingCategories = Object.entries(rating).filter(
     ([key]) => key !== 'overall'
   ) as [keyof typeof RATING_LABELS, number][];
 
@@ -170,10 +129,10 @@ export default function ProfessionalProfilePage() {
                     <CheckCircle className="w-6 h-6 text-success" />
                   )}
                 </div>
-                <p className="text-lg text-secondary-600 mb-2">{professional.categoryName}</p>
+                <p className="text-lg text-secondary-600 mb-2">{categoryName}</p>
                 <RatingStars
-                  rating={professional.rating.overall}
-                  reviewCount={professional.reviewCount}
+                  rating={rating.overall}
+                  reviewCount={reviewCount}
                   size="md"
                 />
               </div>
@@ -189,13 +148,15 @@ export default function ProfessionalProfilePage() {
                   </span>
                 </div>
               )}
-              <div className="flex items-center gap-2 px-4 py-2 bg-secondary-100 rounded-lg">
-                <MapPin className="w-5 h-5 text-secondary-500" />
-                <span className="text-secondary-700">
-                  {professional.serviceAreas.slice(0, 2).join(', ')}
-                  {professional.serviceAreas.length > 2 && ` +${professional.serviceAreas.length - 2}`}
-                </span>
-              </div>
+              {serviceAreas.length > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-secondary-100 rounded-lg">
+                  <MapPin className="w-5 h-5 text-secondary-500" />
+                  <span className="text-secondary-700">
+                    {serviceAreas.slice(0, 2).join(', ')}
+                    {serviceAreas.length > 2 && ` +${serviceAreas.length - 2}`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -207,12 +168,14 @@ export default function ProfessionalProfilePage() {
                 בקש הצעת מחיר
               </Button>
             </Link>
-            <a href={`tel:${professional.phone}`}>
-              <Button variant="outline" size="lg">
-                <Phone className="w-5 h-5" />
-                התקשר עכשיו
-              </Button>
-            </a>
+            {professional.phone && (
+              <a href={`tel:${professional.phone}`}>
+                <Button variant="outline" size="lg">
+                  <Phone className="w-5 h-5" />
+                  התקשר עכשיו
+                </Button>
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -224,7 +187,7 @@ export default function ProfessionalProfilePage() {
             {[
               { key: 'overview', label: 'סקירה כללית' },
               { key: 'services', label: 'שירותים ומחירים' },
-              { key: 'reviews', label: `ביקורות (${professional.reviewCount})` },
+              { key: 'reviews', label: `ביקורות (${reviewCount})` },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -253,74 +216,82 @@ export default function ProfessionalProfilePage() {
                 {/* About */}
                 <Card>
                   <h2 className="text-lg font-semibold text-secondary-800 mb-4">אודות</h2>
-                  <p className="text-secondary-700 leading-relaxed">{professional.description}</p>
+                  <p className="text-secondary-700 leading-relaxed">{professional.description || 'אין תיאור'}</p>
                 </Card>
 
                 {/* Rating breakdown */}
-                <Card>
-                  <h2 className="text-lg font-semibold text-secondary-800 mb-4">פירוט דירוגים</h2>
-                  <div className="space-y-3">
-                    {ratingCategories.map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between">
-                        <span className="text-secondary-600">{RATING_LABELS[key]}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-32 h-2 bg-secondary-200 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary-500 rounded-full"
-                              style={{ width: `${(value / 5) * 100}%` }}
-                            />
+                {rating.overall > 0 && (
+                  <Card>
+                    <h2 className="text-lg font-semibold text-secondary-800 mb-4">פירוט דירוגים</h2>
+                    <div className="space-y-3">
+                      {ratingCategories.map(([key, value]) => (
+                        <div key={key} className="flex items-center justify-between">
+                          <span className="text-secondary-600">{RATING_LABELS[key]}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-32 h-2 bg-secondary-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary-500 rounded-full"
+                                style={{ width: `${(value / 5) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium text-secondary-700 w-8">
+                              {value.toFixed(1)}
+                            </span>
                           </div>
-                          <span className="text-sm font-medium text-secondary-700 w-8">
-                            {value.toFixed(1)}
-                          </span>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
+                      ))}
+                    </div>
+                  </Card>
+                )}
 
                 {/* Recent reviews */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-secondary-800">ביקורות אחרונות</h2>
-                    <button
-                      onClick={() => setActiveTab('reviews')}
-                      className="text-primary-600 hover:text-primary-700 text-sm"
-                    >
-                      צפה בכל הביקורות
-                    </button>
+                {reviews.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-secondary-800">ביקורות אחרונות</h2>
+                      <button
+                        onClick={() => setActiveTab('reviews')}
+                        className="text-primary-600 hover:text-primary-700 text-sm"
+                      >
+                        צפה בכל הביקורות
+                      </button>
+                    </div>
+                    <div className="space-y-4">
+                      {reviews.slice(0, 2).map((review) => (
+                        <ReviewCard key={review.id} review={review} showDetailedRating />
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-4">
-                    {reviews.slice(0, 2).map((review) => (
-                      <ReviewCard key={review.id} review={review} showDetailedRating />
-                    ))}
-                  </div>
-                </div>
+                )}
               </>
             )}
 
             {activeTab === 'services' && (
               <Card>
                 <h2 className="text-lg font-semibold text-secondary-800 mb-4">שירותים ומחירים</h2>
-                <div className="divide-y divide-secondary-100">
-                  {professional.services.map((service) => (
-                    <div key={service.id} className="py-4 flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-secondary-800">{service.name}</h3>
-                        {service.description && (
-                          <p className="text-sm text-secondary-500 mt-1">{service.description}</p>
-                        )}
+                {services.length > 0 ? (
+                  <div className="divide-y divide-secondary-100">
+                    {services.map((service: any, idx: number) => (
+                      <div key={service.id || idx} className="py-4 flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-secondary-800">{service.name}</h3>
+                          {service.description && (
+                            <p className="text-sm text-secondary-500 mt-1">{service.description}</p>
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <span className="font-semibold text-primary-600">
+                            {service.minPrice === service.maxPrice
+                              ? `${service.minPrice} ש"ח`
+                              : `${service.minPrice} - ${service.maxPrice} ש"ח`}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <span className="font-semibold text-primary-600">
-                          {service.minPrice === service.maxPrice
-                            ? `${service.minPrice} ש"ח`
-                            : `${service.minPrice} - ${service.maxPrice} ש"ח`}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-secondary-500">אין שירותים להצגה</p>
+                )}
               </Card>
             )}
 
@@ -328,13 +299,18 @@ export default function ProfessionalProfilePage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-secondary-800">
-                    כל הביקורות ({professional.reviewCount})
+                    כל הביקורות ({reviewCount})
                   </h2>
-                  {/* Add sorting/filtering here */}
                 </div>
-                {reviews.map((review) => (
-                  <ReviewCard key={review.id} review={review} showDetailedRating />
-                ))}
+                {reviews.length > 0 ? (
+                  reviews.map((review) => (
+                    <ReviewCard key={review.id} review={review} showDetailedRating />
+                  ))
+                ) : (
+                  <Card className="text-center py-8">
+                    <p className="text-secondary-500">אין ביקורות עדיין</p>
+                  </Card>
+                )}
               </div>
             )}
           </div>
@@ -345,73 +321,81 @@ export default function ProfessionalProfilePage() {
             <Card>
               <h2 className="text-lg font-semibold text-secondary-800 mb-4">פרטי קשר</h2>
               <div className="space-y-3">
-                <a
-                  href={`tel:${professional.phone}`}
-                  className="flex items-center gap-3 text-secondary-700 hover:text-primary-600"
-                >
-                  <Phone className="w-5 h-5" />
-                  {professional.phone}
-                </a>
-                <a
-                  href={`mailto:${professional.email}`}
-                  className="flex items-center gap-3 text-secondary-700 hover:text-primary-600"
-                >
-                  <Mail className="w-5 h-5" />
-                  {professional.email}
-                </a>
+                {professional.phone && (
+                  <a
+                    href={`tel:${professional.phone}`}
+                    className="flex items-center gap-3 text-secondary-700 hover:text-primary-600"
+                  >
+                    <Phone className="w-5 h-5" />
+                    {professional.phone}
+                  </a>
+                )}
+                {professional.email && (
+                  <a
+                    href={`mailto:${professional.email}`}
+                    className="flex items-center gap-3 text-secondary-700 hover:text-primary-600"
+                  >
+                    <Mail className="w-5 h-5" />
+                    {professional.email}
+                  </a>
+                )}
               </div>
             </Card>
 
             {/* Working hours */}
-            <Card>
-              <h2 className="text-lg font-semibold text-secondary-800 mb-4">
-                <Clock className="w-5 h-5 inline ml-2" />
-                שעות פעילות
-              </h2>
-              <div className="space-y-2">
-                {professional.workingHours.map((wh) => {
-                  const dayLabel = DAYS_OF_WEEK.find((d) => d.value === wh.day)?.label;
-                  return (
-                    <div key={wh.day} className="flex justify-between text-sm">
-                      <span className="text-secondary-600">{dayLabel}</span>
-                      <span className={wh.isWorking ? 'text-secondary-800' : 'text-secondary-400'}>
-                        {wh.isWorking ? `${wh.startTime} - ${wh.endTime}` : 'סגור'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
+            {workingHours.length > 0 && (
+              <Card>
+                <h2 className="text-lg font-semibold text-secondary-800 mb-4">
+                  <Clock className="w-5 h-5 inline ml-2" />
+                  שעות פעילות
+                </h2>
+                <div className="space-y-2">
+                  {workingHours.map((wh: any) => {
+                    const dayLabel = DAYS_OF_WEEK.find((d) => d.value === wh.day)?.label;
+                    return (
+                      <div key={wh.day} className="flex justify-between text-sm">
+                        <span className="text-secondary-600">{dayLabel}</span>
+                        <span className={wh.isWorking ? 'text-secondary-800' : 'text-secondary-400'}>
+                          {wh.isWorking ? `${wh.startTime} - ${wh.endTime}` : 'סגור'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
 
             {/* Service areas */}
-            <Card>
-              <h2 className="text-lg font-semibold text-secondary-800 mb-4">
-                <MapPin className="w-5 h-5 inline ml-2" />
-                אזורי שירות
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {professional.serviceAreas.map((area) => (
-                  <span
-                    key={area}
-                    className="px-3 py-1 bg-secondary-100 rounded-full text-sm text-secondary-700"
-                  >
-                    {area}
-                  </span>
-                ))}
-              </div>
-            </Card>
+            {serviceAreas.length > 0 && (
+              <Card>
+                <h2 className="text-lg font-semibold text-secondary-800 mb-4">
+                  <MapPin className="w-5 h-5 inline ml-2" />
+                  אזורי שירות
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {serviceAreas.map((area: string) => (
+                    <span
+                      key={area}
+                      className="px-3 py-1 bg-secondary-100 rounded-full text-sm text-secondary-700"
+                    >
+                      {area}
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             {/* Certificates */}
-            {professional.certificates.length > 0 && (
+            {certificates.length > 0 && (
               <Card>
                 <h2 className="text-lg font-semibold text-secondary-800 mb-4">
                   <FileText className="w-5 h-5 inline ml-2" />
                   תעודות והסמכות
                 </h2>
                 <div className="space-y-2">
-                  {professional.certificates.map((cert) => (
+                  {certificates.map((cert: any, idx: number) => (
                     <a
-                      key={cert.id}
+                      key={cert.id || idx}
                       href={cert.fileUrl}
                       target="_blank"
                       rel="noopener noreferrer"

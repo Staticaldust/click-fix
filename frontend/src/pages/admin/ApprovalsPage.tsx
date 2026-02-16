@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   UserCheck,
   Eye,
@@ -12,81 +12,35 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { Card, Button, Avatar, Modal } from '../../components/common';
+import { Card, Button, Avatar, Modal, PageLoader } from '../../components/common';
 import { formatDate } from '../../utils/helpers';
-
-interface PendingProfessional {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  categoryId: string;
-  categoryName: string;
-  description: string;
-  yearsOfExperience: number;
-  serviceAreas: string[];
-  certificates: Array<{ name: string; url: string }>;
-  createdAt: Date;
-}
-
-const mockPendingProfessionals: PendingProfessional[] = [
-  {
-    id: '1',
-    firstName: 'יוסי',
-    lastName: 'לוי',
-    email: 'yosi@example.com',
-    phone: '050-1234567',
-    categoryId: 'electrician',
-    categoryName: 'חשמלאי',
-    description: 'חשמלאי מוסמך עם ניסיון של 10 שנים בתחום הביתי והמסחרי',
-    yearsOfExperience: 10,
-    serviceAreas: ['ירושלים', 'בית שמש', 'מודיעין'],
-    certificates: [
-      { name: 'תעודת חשמלאי מוסמך', url: '#' },
-      { name: 'רישיון עבודה בגובה', url: '#' },
-    ],
-    createdAt: new Date('2024-01-12'),
-  },
-  {
-    id: '2',
-    firstName: 'אברהם',
-    lastName: 'כהן',
-    email: 'avraham@example.com',
-    phone: '052-9876543',
-    categoryId: 'plumber',
-    categoryName: 'אינסטלטור',
-    description: 'אינסטלטור מקצועי, מתמחה בתיקון נזילות ושיפוץ חדרי אמבטיה',
-    yearsOfExperience: 8,
-    serviceAreas: ['בני ברק', 'רמת גן', 'פתח תקווה'],
-    certificates: [
-      { name: 'תעודת אינסטלטור מוסמך', url: '#' },
-    ],
-    createdAt: new Date('2024-01-11'),
-  },
-  {
-    id: '3',
-    firstName: 'משה',
-    lastName: 'גולד',
-    email: 'moshe@example.com',
-    phone: '054-5555555',
-    categoryId: 'painter',
-    categoryName: 'צבעי',
-    description: 'צבעי מקצועי עם התמחות בצביעה דקורטיבית',
-    yearsOfExperience: 15,
-    serviceAreas: ['אשדוד', 'אשקלון', 'באר שבע'],
-    certificates: [],
-    createdAt: new Date('2024-01-10'),
-  },
-];
+import { adminService, PendingProfessional } from '../../services/admin.service';
+import { toast } from 'react-toastify';
 
 export default function ApprovalsPage() {
-  const [professionals, setProfessionals] = useState<PendingProfessional[]>(mockPendingProfessionals);
+  const [professionals, setProfessionals] = useState<PendingProfessional[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedProfessional, setSelectedProfessional] = useState<PendingProfessional | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    const fetchPendingApprovals = async () => {
+      try {
+        const data = await adminService.getPendingApprovals();
+        setProfessionals(data);
+      } catch (error) {
+        console.error('Failed to fetch pending approvals:', error);
+        toast.error('שגיאה בטעינת בקשות הממתינות לאישור');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPendingApprovals();
+  }, []);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -95,12 +49,12 @@ export default function ApprovalsPage() {
   const handleApprove = async (professional: PendingProfessional) => {
     setIsProcessing(true);
     try {
-      console.log('Approving professional:', professional.id);
-      // In production: await adminService.approveProfessional(professional.id);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await adminService.approveProfessional(professional.id);
       setProfessionals(professionals.filter((p) => p.id !== professional.id));
+      toast.success(`${professional.firstName} ${professional.lastName} אושר בהצלחה!`);
     } catch (error) {
       console.error('Failed to approve:', error);
+      toast.error('שגיאה באישור בעל המקצוע');
     } finally {
       setIsProcessing(false);
     }
@@ -110,15 +64,15 @@ export default function ApprovalsPage() {
     if (!selectedProfessional || !rejectReason) return;
     setIsProcessing(true);
     try {
-      console.log('Rejecting professional:', selectedProfessional.id, rejectReason);
-      // In production: await adminService.rejectProfessional(selectedProfessional.id, rejectReason);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await adminService.rejectProfessional(selectedProfessional.id, rejectReason);
       setProfessionals(professionals.filter((p) => p.id !== selectedProfessional.id));
+      toast.success(`הבקשה של ${selectedProfessional.firstName} ${selectedProfessional.lastName} נדחתה`);
       setShowRejectModal(false);
       setRejectReason('');
       setSelectedProfessional(null);
     } catch (error) {
       console.error('Failed to reject:', error);
+      toast.error('שגיאה בדחיית בעל המקצוע');
     } finally {
       setIsProcessing(false);
     }
@@ -128,6 +82,10 @@ export default function ApprovalsPage() {
     setSelectedProfessional(professional);
     setShowRejectModal(true);
   };
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

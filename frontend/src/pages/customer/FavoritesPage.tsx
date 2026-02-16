@@ -1,65 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Search, Trash2 } from 'lucide-react';
-import { Card, Button, ProfessionalCard, Modal } from '../../components/common';
+import { Card, Button, ProfessionalCard, Modal, PageLoader } from '../../components/common';
+import { professionalService } from '../../services/professional.service';
 import type { Professional } from '../../types/professional.types';
 
-// Mock data - in production this would come from API/store
-const mockFavorites: Professional[] = [
-  {
-    id: '1',
-    email: 'david@example.com',
-    firstName: 'דוד',
-    lastName: 'כהן',
-    phone: '050-1234567',
-    role: 'professional',
-    status: 'approved',
-    categoryId: 'electrician',
-    categoryName: 'חשמלאי',
-    description: 'חשמלאי מוסמך עם ניסיון של מעל 15 שנה',
-    yearsOfExperience: 15,
-    serviceAreas: ['ירושלים', 'בית שמש', 'מודיעין'],
-    workingHours: [],
-    services: [
-      { id: '1', name: 'תיקון תקלות', minPrice: 150, maxPrice: 350 },
-    ],
-    certificates: [],
-    rating: { overall: 4.8, reliability: 4.9, service: 4.7, availability: 4.6, price: 4.8, professionalism: 4.9 },
-    reviewCount: 127,
-    isVerified: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '2',
-    email: 'yossi@example.com',
-    firstName: 'יוסי',
-    lastName: 'לוי',
-    phone: '052-9876543',
-    role: 'professional',
-    status: 'approved',
-    categoryId: 'plumber',
-    categoryName: 'אינסטלטור',
-    description: 'אינסטלטור מקצועי לכל סוגי העבודות',
-    yearsOfExperience: 10,
-    serviceAreas: ['בני ברק', 'רמת גן', 'פתח תקווה'],
-    workingHours: [],
-    services: [
-      { id: '1', name: 'תיקון נזילות', minPrice: 200, maxPrice: 400 },
-    ],
-    certificates: [],
-    rating: { overall: 4.5, reliability: 4.6, service: 4.4, availability: 4.5, price: 4.5, professionalism: 4.5 },
-    reviewCount: 89,
-    isVerified: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
 export default function FavoritesPage() {
-  const [favorites, setFavorites] = useState<Professional[]>(mockFavorites);
+  const [favorites, setFavorites] = useState<Professional[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
+
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        // Get favorite IDs from localStorage
+        const savedIds: string[] = JSON.parse(localStorage.getItem('favorites') || '[]');
+        if (savedIds.length === 0) {
+          setFavorites([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch each professional's data
+        const promises = savedIds.map((id) =>
+          professionalService.getById(id).catch(() => null)
+        );
+        const results = await Promise.all(promises);
+        setFavorites(results.filter(Boolean) as Professional[]);
+      } catch (error) {
+        console.error('Failed to fetch favorites:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFavorites();
+  }, []);
 
   const handleRemoveClick = (professional: Professional) => {
     setSelectedProfessional(professional);
@@ -68,11 +45,17 @@ export default function FavoritesPage() {
 
   const handleConfirmRemove = () => {
     if (selectedProfessional) {
-      setFavorites(favorites.filter((f) => f.id !== selectedProfessional.id));
+      const newFavorites = favorites.filter((f) => f.id !== selectedProfessional.id);
+      setFavorites(newFavorites);
+      // Update localStorage
+      const savedIds = newFavorites.map((f) => String(f.id));
+      localStorage.setItem('favorites', JSON.stringify(savedIds));
       setShowRemoveModal(false);
       setSelectedProfessional(null);
     }
   };
+
+  if (isLoading) return <PageLoader />;
 
   return (
     <div className="container mx-auto px-4 py-8">

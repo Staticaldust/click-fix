@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Star,
   CheckCircle,
@@ -6,82 +6,38 @@ import {
   Flag,
   MessageSquare,
 } from 'lucide-react';
-import { Card, Button, Avatar, Modal, RatingStars } from '../../components/common';
+import { Card, Button, Avatar, Modal, RatingStars, PageLoader } from '../../components/common';
 import { formatDate, classNames } from '../../utils/helpers';
+import { adminService, AdminReview } from '../../services/admin.service';
+import { REVIEW_STATUS_LABELS, REVIEW_STATUS_COLORS } from '../../utils/constants';
+import { toast } from 'react-toastify';
 
 type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
 
-interface AdminReview {
-  id: string;
-  customerId: string;
-  customerName: string;
-  professionalId: string;
-  professionalName: string;
-  overallRating: number;
-  content: string;
-  status: ReviewStatus;
-  createdAt: Date;
-  flagReason?: string;
-}
-
-const mockReviews: AdminReview[] = [
-  {
-    id: '1',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    professionalId: 'p1',
-    professionalName: 'דוד לוי',
-    overallRating: 1,
-    content: 'שירות גרוע מאוד! הגיע באיחור של שעתיים ולא סיים את העבודה.',
-    status: 'pending',
-    createdAt: new Date('2024-01-12'),
-  },
-  {
-    id: '2',
-    customerId: 'c2',
-    customerName: 'רחל לוי',
-    professionalId: 'p2',
-    professionalName: 'משה כהן',
-    overallRating: 5,
-    content: 'עבודה מקצועית ומהירה. ממליצה בחום!',
-    status: 'pending',
-    createdAt: new Date('2024-01-11'),
-  },
-  {
-    id: '3',
-    customerId: 'c3',
-    customerName: 'אברהם גולד',
-    professionalId: 'p3',
-    professionalName: 'יוסי אברהם',
-    overallRating: 2,
-    content: 'המחיר היה גבוה מהמצופה והתוצאה לא הייתה מושלמת.',
-    status: 'flagged',
-    flagReason: 'בעל המקצוע דיווח על ביקורת שקרית',
-    createdAt: new Date('2024-01-10'),
-  },
-];
-
-const statusLabels: Record<ReviewStatus, string> = {
-  pending: 'ממתין לבדיקה',
-  approved: 'אושר',
-  rejected: 'נדחה',
-  flagged: 'מסומן',
-};
-
-const statusColors: Record<ReviewStatus, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  approved: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  flagged: 'bg-orange-100 text-orange-700',
-};
-
 export default function ReviewsPage() {
-  const [reviews, setReviews] = useState<AdminReview[]>(mockReviews);
+  const [reviews, setReviews] = useState<AdminReview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedReview, setSelectedReview] = useState<AdminReview | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [filter, setFilter] = useState<ReviewStatus | 'all'>('all');
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const data = await adminService.getReviews();
+        setReviews(data);
+      } catch (error) {
+        console.error('Failed to fetch reviews:', error);
+        toast.error('שגיאה בטעינת הביקורות');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, []);
 
   const filteredReviews = filter === 'all'
     ? reviews
@@ -134,6 +90,10 @@ export default function ReviewsPage() {
 
   const pendingCount = reviews.filter((r) => r.status === 'pending').length;
   const flaggedCount = reviews.filter((r) => r.status === 'flagged').length;
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -193,7 +153,7 @@ export default function ReviewsPage() {
             אין ביקורות להצגה
           </h2>
           <p className="text-secondary-600">
-            {filter === 'all' ? 'אין ביקורות במערכת' : `אין ביקורות בסטטוס "${statusLabels[filter as ReviewStatus]}"`}
+            {filter === 'all' ? 'אין ביקורות במערכת' : `אין ביקורות בסטטוס "${REVIEW_STATUS_LABELS[filter as ReviewStatus]}"`}
           </p>
         </Card>
       ) : (
@@ -217,10 +177,10 @@ export default function ReviewsPage() {
                   <span
                     className={classNames(
                       'px-2 py-1 rounded-full text-xs font-medium',
-                      statusColors[review.status]
+                      REVIEW_STATUS_COLORS[review.status]
                     )}
                   >
-                    {statusLabels[review.status]}
+                    {REVIEW_STATUS_LABELS[review.status]}
                   </span>
                   <span className="text-sm text-secondary-500">
                     {formatDate(review.createdAt)}

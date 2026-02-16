@@ -1,115 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Filter, X, SlidersHorizontal } from 'lucide-react';
 import { Button, Select, Card, ProfessionalCard, Loader } from '../../components/common';
 import { ISRAELI_CITIES, GENDER_OPTIONS, CATEGORIES } from '../../utils/constants';
+import { professionalService } from '../../services/professional.service';
 import type { Professional } from '../../types/professional.types';
-
-// Mock data - in production this would come from API
-const mockProfessionals: Professional[] = [
-  {
-    id: '1',
-    email: 'yossi@example.com',
-    firstName: 'יוסי',
-    lastName: 'כהן',
-    phone: '050-1234567',
-    role: 'professional',
-    status: 'approved',
-    categoryId: 'electrician',
-    categoryName: 'חשמלאי',
-    description: 'חשמלאי מוסמך עם ניסיון של מעל 15 שנה',
-    yearsOfExperience: 15,
-    serviceAreas: ['ירושלים', 'בית שמש', 'מודיעין'],
-    workingHours: [],
-    services: [
-      { id: '1', name: 'תיקון תקלות', minPrice: 150, maxPrice: 350 },
-      { id: '2', name: 'התקנת נקודות', minPrice: 100, maxPrice: 200 },
-    ],
-    certificates: [],
-    rating: {
-      overall: 4.8,
-      reliability: 4.9,
-      service: 4.7,
-      availability: 4.6,
-      price: 4.8,
-      professionalism: 4.9,
-    },
-    reviewCount: 127,
-    isVerified: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '2',
-    email: 'david@example.com',
-    firstName: 'דוד',
-    lastName: 'לוי',
-    phone: '052-9876543',
-    role: 'professional',
-    status: 'approved',
-    categoryId: 'plumber',
-    categoryName: 'אינסטלטור',
-    description: 'אינסטלטור מקצועי לכל סוגי העבודות',
-    yearsOfExperience: 10,
-    serviceAreas: ['בני ברק', 'רמת גן', 'פתח תקווה'],
-    workingHours: [],
-    services: [
-      { id: '1', name: 'תיקון נזילות', minPrice: 200, maxPrice: 400 },
-      { id: '2', name: 'פתיחת סתימות', minPrice: 150, maxPrice: 300 },
-    ],
-    certificates: [],
-    rating: {
-      overall: 4.5,
-      reliability: 4.6,
-      service: 4.4,
-      availability: 4.5,
-      price: 4.5,
-      professionalism: 4.5,
-    },
-    reviewCount: 89,
-    isVerified: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '3',
-    email: 'miriam@example.com',
-    firstName: 'מרים',
-    lastName: 'שרון',
-    phone: '054-5555555',
-    gender: 'female',
-    role: 'professional',
-    status: 'approved',
-    categoryId: 'computer',
-    categoryName: 'טכנאית מחשבים',
-    description: 'מומחית לתיקון מחשבים וטאבלטים',
-    yearsOfExperience: 8,
-    serviceAreas: ['תל אביב', 'רמת גן', 'גבעתיים'],
-    workingHours: [],
-    services: [
-      { id: '1', name: 'תיקון מחשבים', minPrice: 120, maxPrice: 250 },
-      { id: '2', name: 'התקנת תוכנות', minPrice: 80, maxPrice: 150 },
-    ],
-    certificates: [],
-    rating: {
-      overall: 4.9,
-      reliability: 5,
-      service: 4.9,
-      availability: 4.8,
-      price: 4.9,
-      professionalism: 5,
-    },
-    reviewCount: 234,
-    isVerified: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
 
   // Filter states
   const [query, setQuery] = useState(searchParams.get('query') || '');
@@ -127,6 +28,22 @@ export default function SearchPage() {
     { value: '3', label: '3 כוכבים ומעלה' },
     { value: '2', label: '2 כוכבים ומעלה' },
   ];
+
+  useEffect(() => {
+    const fetchProfessionals = async () => {
+      setIsLoading(true);
+      try {
+        const result = await professionalService.search({});
+        setProfessionals(result.professionals);
+      } catch (error) {
+        console.error('Failed to fetch professionals:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfessionals();
+  }, []);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -169,35 +86,36 @@ export default function SearchPage() {
 
   const hasActiveFilters = category || city || gender || minRating;
 
-  // Filter professionals based on current filters
-  const filteredProfessionals = mockProfessionals.filter((p) => {
-    if (category && p.categoryId !== category) return false;
-    if (city && !p.serviceAreas.includes(city)) return false;
+  // Filter professionals based on current filters (client-side filtering on fetched data)
+  const filteredProfessionals = professionals.filter((p: any) => {
+    if (category) {
+      const cats = p.categories || [];
+      const matchesCat = cats.some((c: any) => String(c.id) === category);
+      if (!matchesCat) return false;
+    }
+    if (city && p.area !== city) return false;
     if (gender && p.gender !== gender) return false;
-    if (minRating && p.rating.overall < Number(minRating)) return false;
     if (query) {
       const searchLower = query.toLowerCase();
       const matches =
-        p.firstName.toLowerCase().includes(searchLower) ||
-        p.lastName.toLowerCase().includes(searchLower) ||
-        p.categoryName.toLowerCase().includes(searchLower) ||
-        p.description.toLowerCase().includes(searchLower);
+        (p.firstName || '').toLowerCase().includes(searchLower) ||
+        (p.lastName || '').toLowerCase().includes(searchLower) ||
+        (p.description || '').toLowerCase().includes(searchLower);
       if (!matches) return false;
     }
     return true;
   });
 
   // Sort professionals
-  const sortedProfessionals = [...filteredProfessionals].sort((a, b) => {
+  const sortedProfessionals = [...filteredProfessionals].sort((a: any, b: any) => {
     switch (sortBy) {
-      case 'rating':
-        return b.rating.overall - a.rating.overall;
+      case 'rating': {
+        const aRating = a.reviews?.length ? a.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / a.reviews.length : 0;
+        const bRating = b.reviews?.length ? b.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / b.reviews.length : 0;
+        return bRating - aRating;
+      }
       case 'reviews':
-        return b.reviewCount - a.reviewCount;
-      case 'price':
-        const aMin = Math.min(...a.services.map((s) => s.minPrice));
-        const bMin = Math.min(...b.services.map((s) => s.minPrice));
-        return aMin - bMin;
+        return (b.reviews?.length || 0) - (a.reviews?.length || 0);
       default:
         return 0;
     }
@@ -330,7 +248,6 @@ export default function SearchPage() {
                   { value: 'relevance', label: 'רלוונטיות' },
                   { value: 'rating', label: 'דירוג גבוה' },
                   { value: 'reviews', label: 'מספר ביקורות' },
-                  { value: 'price', label: 'מחיר נמוך' },
                 ]}
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}

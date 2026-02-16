@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import Employee from "../models/Employee";
+import Quote from "../models/Quote";
 
 export const getAllEmployees = async (req: Request, res: Response) => {
   try {
@@ -154,5 +155,93 @@ export const deleteEmployee = async (req: Request, res: Response) => {
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ message: "Error deleting employee", error });
+  }
+};
+
+// GET /api/employees/:id/stats - Get professional dashboard stats
+export const getEmployeeStats = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const employee = await Employee.findByPk(Number(id));
+    if (!employee) {
+      res.status(404).json({ message: "Employee not found" });
+      return;
+    }
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
+    const monthStart = new Date(todayStart);
+    monthStart.setMonth(monthStart.getMonth() - 1);
+
+    // Count quotes by status
+    const [pendingCount, respondedCount, acceptedCount, totalCount] = await Promise.all([
+      Quote.count({ where: { professionalId: Number(id), status: 'pending' } }),
+      Quote.count({ where: { professionalId: Number(id), status: 'responded' } }),
+      Quote.count({ where: { professionalId: Number(id), status: 'accepted' } }),
+      Quote.count({ where: { professionalId: Number(id) } }),
+    ]);
+
+    const conversionRate = totalCount > 0 ? Math.round((acceptedCount / totalCount) * 100) : 0;
+
+    res.json({
+      profileViews: {
+        today: 0,
+        week: 0,
+        month: 0,
+      },
+      requests: {
+        new: pendingCount,
+        inProgress: respondedCount,
+        completed: acceptedCount,
+      },
+      conversionRate,
+    });
+  } catch (error) {
+    console.error("Error fetching employee stats:", error);
+    res.status(500).json({ message: "Error fetching employee stats", error });
+  }
+};
+
+// GET /api/employees/:id/recent-requests - Get recent quote requests for professional
+export const getRecentRequests = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const limit = Number(req.query.limit) || 5;
+
+    const quotes = await Quote.findAll({
+      where: { professionalId: Number(id) },
+      order: [['createdAt', 'DESC']],
+      limit,
+      include: [
+        { association: 'customer', attributes: ['id', 'firstName', 'lastName'] },
+        { association: 'category', attributes: ['id', 'name'] },
+      ],
+    });
+
+    const requests = quotes.map((quote: any) => ({
+      id: String(quote.id),
+      customerId: String(quote.customerId),
+      customerName: quote.customer
+        ? `${quote.customer.firstName} ${quote.customer.lastName}`
+        : quote.guestName || 'אורח',
+      professionalId: String(quote.professionalId),
+      professionalName: '',
+      categoryId: String(quote.categoryId),
+      answers: quote.answers || [],
+      description: quote.description,
+      urgency: quote.urgency,
+      responseMethod: quote.responseMethod,
+      status: quote.status,
+      createdAt: quote.createdAt,
+      respondedAt: quote.respondedAt,
+    }));
+
+    res.json(requests);
+  } catch (error) {
+    console.error("Error fetching recent requests:", error);
+    res.status(500).json({ message: "Error fetching recent requests", error });
   }
 };

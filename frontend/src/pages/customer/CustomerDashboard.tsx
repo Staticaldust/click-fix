@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Heart,
@@ -7,84 +8,52 @@ import {
   ChevronLeft,
   Clock,
 } from 'lucide-react';
-import { Card, Button, Avatar, RatingStars } from '../../components/common';
+import { Card, Button } from '../../components/common';
 import { useAuthStore } from '../../store/authStore';
 import { formatDate } from '../../utils/helpers';
+import { QUOTE_STATUS_LABELS, QUOTE_STATUS_COLORS } from '../../utils/constants';
 import type { QuoteRequest } from '../../types/quote.types';
-import type { Professional } from '../../types/professional.types';
-
-// Mock data - in production this would come from API
-const mockRecentQuotes: QuoteRequest[] = [
-  {
-    id: '1',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    professionalId: 'p1',
-    professionalName: 'דוד כהן',
-    categoryId: 'electrician',
-    answers: [],
-    urgency: 'medium',
-    responseMethod: 'system',
-    status: 'responded',
-    createdAt: new Date('2024-01-10'),
-    respondedAt: new Date('2024-01-10'),
-  },
-  {
-    id: '2',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    professionalId: 'p2',
-    professionalName: 'יוסי לוי',
-    categoryId: 'plumber',
-    answers: [],
-    urgency: 'high',
-    responseMethod: 'phone',
-    status: 'pending',
-    createdAt: new Date('2024-01-12'),
-  },
-];
-
-const mockFavorites: Professional[] = [
-  {
-    id: '1',
-    email: 'david@example.com',
-    firstName: 'דוד',
-    lastName: 'כהן',
-    phone: '050-1234567',
-    role: 'professional',
-    status: 'approved',
-    categoryId: 'electrician',
-    categoryName: 'חשמלאי',
-    description: 'חשמלאי מוסמך',
-    serviceAreas: ['ירושלים'],
-    workingHours: [],
-    services: [],
-    certificates: [],
-    rating: { overall: 4.8, reliability: 4.9, service: 4.7, availability: 4.6, price: 4.8, professionalism: 4.9 },
-    reviewCount: 127,
-    isVerified: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
-const statusLabels: Record<string, { label: string; color: string }> = {
-  pending: { label: 'ממתין לתגובה', color: 'bg-yellow-100 text-yellow-700' },
-  responded: { label: 'התקבלה תגובה', color: 'bg-green-100 text-green-700' },
-  accepted: { label: 'התקבל', color: 'bg-blue-100 text-blue-700' },
-  rejected: { label: 'נדחה', color: 'bg-red-100 text-red-700' },
-  expired: { label: 'פג תוקף', color: 'bg-gray-100 text-gray-700' },
-};
+import { quoteService } from '../../services/quote.service';
+import { toast } from 'react-toastify';
 
 export default function CustomerDashboard() {
   const { user } = useAuthStore();
+  const [recentQuotes, setRecentQuotes] = useState<QuoteRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch recent quotes (limit to 3 for dashboard)
+        const quotesData = await quoteService.getMyQuotes(1, 3);
+        setRecentQuotes(quotesData.quotes || []);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        toast.error('שגיאה בטעינת נתוני הדשבורד');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const stats = [
-    { icon: FileText, label: 'בקשות הצעת מחיר', value: 5, href: '/quotes' },
-    { icon: Heart, label: 'מועדפים', value: mockFavorites.length, href: '/favorites' },
-    { icon: MessageSquare, label: 'שיחות פעילות', value: 2, href: '/chats' },
-    { icon: Star, label: 'ביקורות שנכתבו', value: 3, href: '#' },
+    { icon: FileText, label: 'בקשות הצעת מחיר', value: recentQuotes.length, href: '/quotes' },
+    { icon: Heart, label: 'מועדפים', value: 0, href: '/favorites' }, // Favorites not implemented yet
+    { icon: MessageSquare, label: 'שיחות פעילות', value: 0, href: '/chats' },
+    { icon: Star, label: 'ביקורות שנכתבו', value: 0, href: '#' },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <p className="text-secondary-500">טוען...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -128,7 +97,7 @@ export default function CustomerDashboard() {
             </Link>
           </div>
 
-          {mockRecentQuotes.length === 0 ? (
+          {recentQuotes.length === 0 ? (
             <div className="text-center py-8 text-secondary-500">
               <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>אין בקשות הצעת מחיר</p>
@@ -140,7 +109,7 @@ export default function CustomerDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {mockRecentQuotes.map((quote) => (
+              {recentQuotes.map((quote: QuoteRequest) => (
                 <Link
                   key={quote.id}
                   to={`/quotes/${quote.id}`}
@@ -150,8 +119,8 @@ export default function CustomerDashboard() {
                     <span className="font-medium text-secondary-800">
                       {quote.professionalName}
                     </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusLabels[quote.status].color}`}>
-                      {statusLabels[quote.status].label}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${QUOTE_STATUS_COLORS[quote.status]}`}>
+                      {QUOTE_STATUS_LABELS[quote.status]}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-secondary-500">
@@ -174,40 +143,15 @@ export default function CustomerDashboard() {
             </Link>
           </div>
 
-          {mockFavorites.length === 0 ? (
-            <div className="text-center py-8 text-secondary-500">
-              <Heart className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>אין מועדפים</p>
-              <Link to="/search">
-                <Button variant="outline" size="sm" className="mt-4">
-                  חפש בעל מקצוע
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {mockFavorites.map((professional) => (
-                <Link
-                  key={professional.id}
-                  to={`/professional/${professional.id}`}
-                  className="flex items-center gap-3 p-3 bg-secondary-50 rounded-lg hover:bg-secondary-100 transition-colors"
-                >
-                  <Avatar
-                    src={professional.profileImage}
-                    name={`${professional.firstName} ${professional.lastName}`}
-                    size="md"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-secondary-800 truncate">
-                      {professional.firstName} {professional.lastName}
-                    </div>
-                    <div className="text-sm text-secondary-500">{professional.categoryName}</div>
-                  </div>
-                  <RatingStars rating={professional.rating.overall} size="sm" showValue={false} />
-                </Link>
-              ))}
-            </div>
-          )}
+          <div className="text-center py-8 text-secondary-500">
+            <Heart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>אין מועדפים</p>
+            <Link to="/search">
+              <Button variant="outline" size="sm" className="mt-4">
+                חפש בעל מקצוע
+              </Button>
+            </Link>
+          </div>
         </Card>
       </div>
 

@@ -3,72 +3,9 @@ import { Link } from 'react-router-dom';
 import { FileText, Clock, ChevronLeft, Search } from 'lucide-react';
 import { Card, Button, Select, Avatar, PageLoader } from '../../components/common';
 import { formatDate, classNames } from '../../utils/helpers';
-import { QUOTE_STATUS_LABELS, URGENCY_LEVELS } from '../../utils/constants';
+import { QUOTE_STATUS_LABELS, QUOTE_STATUS_COLORS, URGENCY_COLORS, URGENCY_LEVELS } from '../../utils/constants';
 import { quoteService } from '../../services/quote.service';
-import type { QuoteRequest, QuoteStatus } from '../../types/quote.types';
-
-// Mock data
-const mockQuotes: QuoteRequest[] = [
-  {
-    id: '1',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    professionalId: 'p1',
-    professionalName: 'דוד כהן',
-    categoryId: 'electrician',
-    answers: [
-      { questionId: 'q1', question: 'סוג העבודה', answer: 'תיקון תקלה' },
-      { questionId: 'q2', question: 'תיאור הבעיה', answer: 'נפלו חשמלים בחדר שינה' },
-    ],
-    description: 'צריך תיקון דחוף של חשמל בחדר שינה',
-    urgency: 'high',
-    responseMethod: 'system',
-    status: 'responded',
-    createdAt: new Date('2024-01-10'),
-    respondedAt: new Date('2024-01-10'),
-  },
-  {
-    id: '2',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    professionalId: 'p2',
-    professionalName: 'יוסי לוי',
-    categoryId: 'plumber',
-    answers: [],
-    urgency: 'medium',
-    responseMethod: 'phone',
-    status: 'pending',
-    createdAt: new Date('2024-01-12'),
-  },
-  {
-    id: '3',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    professionalId: 'p3',
-    professionalName: 'משה גולן',
-    categoryId: 'ac',
-    answers: [],
-    urgency: 'low',
-    responseMethod: 'system',
-    status: 'accepted',
-    createdAt: new Date('2024-01-05'),
-    respondedAt: new Date('2024-01-06'),
-  },
-];
-
-const statusColors: Record<QuoteStatus, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  responded: 'bg-green-100 text-green-700',
-  accepted: 'bg-blue-100 text-blue-700',
-  rejected: 'bg-red-100 text-red-700',
-  expired: 'bg-gray-100 text-gray-700',
-};
-
-const urgencyColors: Record<string, string> = {
-  low: 'text-green-600',
-  medium: 'text-yellow-600',
-  high: 'text-red-600',
-};
+import type { QuoteRequest } from '../../types/quote.types';
 
 export default function QuotesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -82,8 +19,6 @@ export default function QuotesPage() {
         setQuotes(data.quotes);
       } catch (error) {
         console.error('Failed to fetch quotes:', error);
-        // Fallback to mock data if API fails
-        setQuotes(mockQuotes);
       } finally {
         setIsLoading(false);
       }
@@ -171,13 +106,13 @@ export default function QuotesPage() {
                   <div className="flex items-center gap-3">
                     <span className={classNames(
                       'px-3 py-1 rounded-full text-xs font-medium',
-                      urgencyColors[quote.urgency]
+                      URGENCY_COLORS[quote.urgency]
                     )}>
                       {URGENCY_LEVELS.find((u) => u.value === quote.urgency)?.label}
                     </span>
                     <span className={classNames(
                       'px-3 py-1 rounded-full text-sm font-medium',
-                      statusColors[quote.status]
+                      QUOTE_STATUS_COLORS[quote.status]
                     )}>
                       {QUOTE_STATUS_LABELS[quote.status]}
                     </span>

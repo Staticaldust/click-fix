@@ -9,82 +9,9 @@ import {
 } from 'lucide-react';
 import { Card, Button, Select, Avatar, Modal, Input, PageLoader } from '../../components/common';
 import { formatDate, classNames } from '../../utils/helpers';
-import { QUOTE_STATUS_LABELS } from '../../utils/constants';
+import { QUOTE_STATUS_LABELS, QUOTE_STATUS_COLORS, URGENCY_BG_COLORS, URGENCY_LABELS } from '../../utils/constants';
 import { quoteService } from '../../services/quote.service';
-import type { QuoteRequest, QuoteStatus } from '../../types/quote.types';
-
-// Mock data
-const mockRequests: QuoteRequest[] = [
-  {
-    id: '1',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    professionalId: 'p1',
-    professionalName: 'דוד כהן',
-    categoryId: 'electrician',
-    answers: [
-      { questionId: 'q1', question: 'סוג העבודה', answer: 'תיקון תקלה' },
-      { questionId: 'q2', question: 'תיאור הבעיה', answer: 'נפלו חשמלים בחדר שינה' },
-    ],
-    description: 'צריך תיקון דחוף של חשמל בחדר שינה, החשמל קופץ כל כמה דקות',
-    urgency: 'high',
-    responseMethod: 'system',
-    status: 'pending',
-    createdAt: new Date('2024-01-12T10:30:00'),
-  },
-  {
-    id: '2',
-    customerId: 'c2',
-    customerName: 'רחל לוי',
-    professionalId: 'p1',
-    professionalName: 'דוד כהן',
-    categoryId: 'electrician',
-    answers: [
-      { questionId: 'q1', question: 'סוג העבודה', answer: 'התקנה חדשה' },
-      { questionId: 'q2', question: 'כמות נקודות', answer: '5' },
-    ],
-    description: 'התקנת 5 נקודות חשמל בדירה חדשה',
-    urgency: 'medium',
-    responseMethod: 'phone',
-    status: 'pending',
-    createdAt: new Date('2024-01-11T14:20:00'),
-  },
-  {
-    id: '3',
-    customerId: 'c3',
-    customerName: 'משה גולד',
-    professionalId: 'p1',
-    professionalName: 'דוד כהן',
-    categoryId: 'electrician',
-    answers: [],
-    description: 'בדיקת לוח חשמל ישן',
-    urgency: 'low',
-    responseMethod: 'system',
-    status: 'responded',
-    createdAt: new Date('2024-01-10T09:00:00'),
-    respondedAt: new Date('2024-01-10T11:30:00'),
-  },
-];
-
-const statusColors: Record<QuoteStatus, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  responded: 'bg-green-100 text-green-700',
-  accepted: 'bg-blue-100 text-blue-700',
-  rejected: 'bg-red-100 text-red-700',
-  expired: 'bg-gray-100 text-gray-700',
-};
-
-const urgencyColors: Record<string, string> = {
-  low: 'bg-green-100 text-green-700',
-  medium: 'bg-yellow-100 text-yellow-700',
-  high: 'bg-red-100 text-red-700',
-};
-
-const urgencyLabels: Record<string, string> = {
-  low: 'רגיל',
-  medium: 'בינוני',
-  high: 'דחוף',
-};
+import type { QuoteRequest } from '../../types/quote.types';
 
 export default function IncomingRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -108,8 +35,6 @@ export default function IncomingRequestsPage() {
       } catch (error) {
         console.error('Failed to fetch requests:', error);
         toast.error('שגיאה בטעינת הבקשות');
-        // Fallback to mock data
-        setRequests(mockRequests);
       } finally {
         setIsLoading(false);
       }
@@ -223,13 +148,13 @@ export default function IncomingRequestsPage() {
                       </h3>
                       <span className={classNames(
                         'px-2 py-0.5 rounded-full text-xs font-medium',
-                        urgencyColors[request.urgency]
+                        URGENCY_BG_COLORS[request.urgency]
                       )}>
-                        {urgencyLabels[request.urgency]}
+                        {URGENCY_LABELS[request.urgency]}
                       </span>
                       <span className={classNames(
                         'px-2 py-0.5 rounded-full text-xs font-medium',
-                        statusColors[request.status]
+                        QUOTE_STATUS_COLORS[request.status]
                       )}>
                         {QUOTE_STATUS_LABELS[request.status]}
                       </span>

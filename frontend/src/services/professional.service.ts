@@ -2,6 +2,7 @@ import api from './api';
 import type { Professional, ProfessionalStats } from '../types/professional.types';
 import type { Review } from '../types/review.types';
 import type { Gender } from '../types/user.types';
+import type { QuoteRequest } from '../types/quote.types';
 
 export interface SearchParams {
   query?: string;
@@ -30,20 +31,28 @@ export interface ProfessionalReviewsResponse {
 
 export const professionalService = {
   search: async (params: SearchParams): Promise<SearchResponse> => {
-    const response = await api.get<SearchResponse>('/professionals/search', { params });
-    return response.data;
+    const response = await api.get('/employees', { params });
+    const data = response.data;
+    // If response is an array (from getAllEmployees), wrap it
+    if (Array.isArray(data)) {
+      return {
+        professionals: data,
+        total: data.length,
+        page: 1,
+        totalPages: 1,
+      };
+    }
+    return data as SearchResponse;
   },
 
   getById: async (id: string): Promise<Professional> => {
-    const response = await api.get<Professional>(`/professionals/${id}`);
+    const response = await api.get<Professional>(`/employees/${id}`);
     return response.data;
   },
 
   getFeatured: async (limit = 4): Promise<Professional[]> => {
-    const response = await api.get<{ professionals: Professional[] }>('/professionals/featured', {
-      params: { limit },
-    });
-    return response.data.professionals;
+    const response = await api.get<any[]>('/employees');
+    return (response.data || []).slice(0, limit);
   },
 
   getReviews: async (
@@ -52,7 +61,7 @@ export const professionalService = {
     limit = 10
   ): Promise<ProfessionalReviewsResponse> => {
     const response = await api.get<ProfessionalReviewsResponse>(
-      `/professionals/${professionalId}/reviews`,
+      `/employees/${professionalId}/reviews`,
       { params: { page, limit } }
     );
     return response.data;
@@ -60,7 +69,15 @@ export const professionalService = {
 
   getStats: async (professionalId: string): Promise<ProfessionalStats> => {
     const response = await api.get<ProfessionalStats>(
-      `/professionals/${professionalId}/stats`
+      `/employees/${professionalId}/stats`
+    );
+    return response.data;
+  },
+
+  getRecentRequests: async (professionalId: string, limit = 5): Promise<QuoteRequest[]> => {
+    const response = await api.get<QuoteRequest[]>(
+      `/employees/${professionalId}/recent-requests`,
+      { params: { limit } }
     );
     return response.data;
   },
@@ -70,7 +87,7 @@ export const professionalService = {
     data: Partial<Professional>
   ): Promise<Professional> => {
     const response = await api.put<Professional>(
-      `/professionals/${professionalId}`,
+      `/employees/${professionalId}`,
       data
     );
     return response.data;
@@ -86,7 +103,7 @@ export const professionalService = {
     formData.append('name', name);
 
     const response = await api.post<{ id: string; fileUrl: string }>(
-      `/professionals/${professionalId}/certificates`,
+      `/employees/${professionalId}/certificates`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
@@ -97,7 +114,7 @@ export const professionalService = {
     professionalId: string,
     certificateId: string
   ): Promise<void> => {
-    await api.delete(`/professionals/${professionalId}/certificates/${certificateId}`);
+    await api.delete(`/employees/${professionalId}/certificates/${certificateId}`);
   },
 };
 

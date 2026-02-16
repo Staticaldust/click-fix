@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Settings,
   Plus,
@@ -8,34 +8,16 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { Card, Button, Input, Modal } from '../../components/common';
+import { Card, Button, Input, Modal, PageLoader } from '../../components/common';
 import { classNames } from '../../utils/helpers';
-import { CATEGORIES } from '../../utils/constants';
-
-interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  isActive: boolean;
-  professionalsCount: number;
-  order: number;
-}
-
-const mockCategories: Category[] = CATEGORIES.map((cat, index) => ({
-  id: cat.id,
-  name: cat.name,
-  icon: cat.icon,
-  description: `שירותי ${cat.name} מקצועיים`,
-  isActive: true,
-  professionalsCount: Math.floor(Math.random() * 50) + 10,
-  order: index,
-}));
+import { adminService, AdminCategory } from '../../services/admin.service';
+import { toast } from 'react-toastify';
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<AdminCategory | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     icon: '',
@@ -43,7 +25,23 @@ export default function CategoriesPage() {
   });
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<AdminCategory | null>(null);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await adminService.getCategories();
+        setCategories(data);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        toast.error('שגיאה בטעינת הקטגוריות');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const openAddModal = () => {
     setEditingCategory(null);
@@ -51,7 +49,7 @@ export default function CategoriesPage() {
     setShowModal(true);
   };
 
-  const openEditModal = (category: Category) => {
+  const openEditModal = (category: AdminCategory) => {
     setEditingCategory(category);
     setFormData({
       name: category.name,
@@ -61,7 +59,7 @@ export default function CategoriesPage() {
     setShowModal(true);
   };
 
-  const openDeleteModal = (category: Category) => {
+  const openDeleteModal = (category: AdminCategory) => {
     setCategoryToDelete(category);
     setShowDeleteModal(true);
   };
@@ -71,36 +69,23 @@ export default function CategoriesPage() {
     setIsProcessing(true);
     try {
       if (editingCategory) {
-        console.log('Updating category:', editingCategory.id, formData);
-        // In production: await adminService.updateCategory(editingCategory.id, formData);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setCategories(
-          categories.map((c) =>
-            c.id === editingCategory.id
-              ? { ...c, ...formData }
-              : c
-          )
-        );
+        await adminService.updateCategory(editingCategory.id, formData);
+        toast.success('הקטגוריה עודכנה בהצלחה');
       } else {
-        console.log('Creating category:', formData);
-        // In production: await adminService.createCategory(formData);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const newCategory: Category = {
-          id: `cat-${Date.now()}`,
-          name: formData.name,
-          icon: formData.icon || '🔧',
-          description: formData.description,
-          isActive: true,
-          professionalsCount: 0,
-          order: categories.length,
-        };
-        setCategories([...categories, newCategory]);
+        await adminService.createCategory(formData);
+        toast.success('הקטגוריה נוספה בהצלחה');
       }
+
+      // Refresh categories list
+      const data = await adminService.getCategories();
+      setCategories(data);
+
       setShowModal(false);
       setFormData({ name: '', icon: '', description: '' });
       setEditingCategory(null);
     } catch (error) {
       console.error('Failed to save category:', error);
+      toast.error('שגיאה בשמירת הקטגוריה');
     } finally {
       setIsProcessing(false);
     }
@@ -110,32 +95,36 @@ export default function CategoriesPage() {
     if (!categoryToDelete) return;
     setIsProcessing(true);
     try {
-      console.log('Deleting category:', categoryToDelete.id);
-      // In production: await adminService.deleteCategory(categoryToDelete.id);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await adminService.deleteCategory(categoryToDelete.id);
       setCategories(categories.filter((c) => c.id !== categoryToDelete.id));
+      toast.success('הקטגוריה נמחקה בהצלחה');
       setShowDeleteModal(false);
       setCategoryToDelete(null);
     } catch (error) {
       console.error('Failed to delete category:', error);
+      toast.error('שגיאה במחיקת הקטגוריה');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const toggleActive = async (category: Category) => {
+  const toggleActive = async (category: AdminCategory) => {
     try {
-      console.log('Toggling category:', category.id);
-      // In production: await adminService.toggleCategory(category.id);
+      // Toggle is visual only for now - backend doesn't have isActive field
       setCategories(
         categories.map((c) =>
           c.id === category.id ? { ...c, isActive: !c.isActive } : c
         )
       );
+      toast.info('שינוי סטטוס זמין בקרוב');
     } catch (error) {
       console.error('Failed to toggle category:', error);
     }
   };
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

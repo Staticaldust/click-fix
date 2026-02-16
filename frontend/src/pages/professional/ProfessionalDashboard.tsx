@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Eye,
   FileText,
@@ -9,98 +11,74 @@ import {
   Clock,
   CheckCircle,
 } from 'lucide-react';
-import { Card, Button, Avatar, RatingStars } from '../../components/common';
+import { Card, Button, Avatar, RatingStars, PageLoader } from '../../components/common';
 import { useAuthStore } from '../../store/authStore';
 import { formatDate, classNames } from '../../utils/helpers';
+import { URGENCY_COLORS } from '../../utils/constants';
+import { professionalService } from '../../services/professional.service';
 import type { QuoteRequest } from '../../types/quote.types';
 import type { ProfessionalStats } from '../../types/professional.types';
 
-// Mock data
-const mockStats: ProfessionalStats = {
-  profileViews: {
-    today: 12,
-    week: 87,
-    month: 342,
-  },
-  requests: {
-    new: 5,
-    inProgress: 3,
-    completed: 127,
-  },
-  conversionRate: 68,
-};
-
-const mockRecentRequests: QuoteRequest[] = [
-  {
-    id: '1',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    professionalId: 'p1',
-    professionalName: 'דוד כהן',
-    categoryId: 'electrician',
-    answers: [],
-    description: 'צריך תיקון דחוף של חשמל בחדר שינה',
-    urgency: 'high',
-    responseMethod: 'system',
-    status: 'pending',
-    createdAt: new Date('2024-01-12'),
-  },
-  {
-    id: '2',
-    customerId: 'c2',
-    customerName: 'רחל לוי',
-    professionalId: 'p1',
-    professionalName: 'דוד כהן',
-    categoryId: 'electrician',
-    answers: [],
-    description: 'התקנת 5 נקודות חשמל בדירה חדשה',
-    urgency: 'medium',
-    responseMethod: 'phone',
-    status: 'pending',
-    createdAt: new Date('2024-01-11'),
-  },
-];
-
-const urgencyColors: Record<string, string> = {
-  low: 'text-green-600',
-  medium: 'text-yellow-600',
-  high: 'text-red-600',
-};
-
 export default function ProfessionalDashboard() {
   const { user } = useAuthStore();
+  const [professionalStats, setProfessionalStats] = useState<ProfessionalStats | null>(null);
+  const [recentRequests, setRecentRequests] = useState<QuoteRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const stats = [
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
+      try {
+        const [statsData, requestsData] = await Promise.all([
+          professionalService.getStats(String(user.id)),
+          professionalService.getRecentRequests(String(user.id), 5),
+        ]);
+        setProfessionalStats(statsData);
+        setRecentRequests(requestsData);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        toast.error('שגיאה בטעינת נתוני הדשבורד');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.id]);
+
+  if (isLoading) return <PageLoader />;
+
+  const stats = professionalStats ? [
     {
       icon: Eye,
       label: 'צפיות היום',
-      value: mockStats.profileViews.today,
-      subtext: `${mockStats.profileViews.week} השבוע`,
+      value: professionalStats.profileViews.today,
+      subtext: `${professionalStats.profileViews.week} השבוע`,
       color: 'bg-blue-100 text-blue-600',
     },
     {
       icon: FileText,
       label: 'בקשות חדשות',
-      value: mockStats.requests.new,
-      subtext: `${mockStats.requests.inProgress} בטיפול`,
+      value: professionalStats.requests.new,
+      subtext: `${professionalStats.requests.inProgress} בטיפול`,
       color: 'bg-yellow-100 text-yellow-600',
       href: '/pro/requests',
     },
     {
       icon: CheckCircle,
       label: 'עבודות שהושלמו',
-      value: mockStats.requests.completed,
+      value: professionalStats.requests.completed,
       subtext: 'סה"כ',
       color: 'bg-green-100 text-green-600',
     },
     {
       icon: TrendingUp,
       label: 'אחוז המרה',
-      value: `${mockStats.conversionRate}%`,
+      value: `${professionalStats.conversionRate}%`,
       subtext: 'מבקשות לעבודות',
       color: 'bg-purple-100 text-purple-600',
     },
-  ];
+  ] : [];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -146,9 +124,9 @@ export default function ProfessionalDashboard() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-secondary-800">
                 בקשות חדשות
-                {mockStats.requests.new > 0 && (
+                {professionalStats && professionalStats.requests.new > 0 && (
                   <span className="mr-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-sm rounded-full">
-                    {mockStats.requests.new}
+                    {professionalStats.requests.new}
                   </span>
                 )}
               </h2>
@@ -158,14 +136,14 @@ export default function ProfessionalDashboard() {
               </Link>
             </div>
 
-            {mockRecentRequests.length === 0 ? (
+            {recentRequests.length === 0 ? (
               <div className="text-center py-8 text-secondary-500">
                 <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>אין בקשות חדשות</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {mockRecentRequests.map((request) => (
+                {recentRequests.map((request) => (
                   <div
                     key={request.id}
                     className="p-4 bg-secondary-50 rounded-lg hover:bg-secondary-100 transition-colors"
@@ -183,7 +161,7 @@ export default function ProfessionalDashboard() {
                           </div>
                         </div>
                       </div>
-                      <span className={classNames('text-xs font-medium', urgencyColors[request.urgency])}>
+                      <span className={classNames('text-xs font-medium', URGENCY_COLORS[request.urgency])}>
                         {request.urgency === 'high' ? 'דחוף' : request.urgency === 'medium' ? 'בינוני' : 'רגיל'}
                       </span>
                     </div>
@@ -218,8 +196,7 @@ export default function ProfessionalDashboard() {
               <h3 className="font-medium text-secondary-800">
                 {user?.firstName} {user?.lastName}
               </h3>
-              <p className="text-sm text-secondary-500">חשמלאי</p>
-              <RatingStars rating={4.8} reviewCount={127} className="justify-center mt-2" />
+              <RatingStars rating={0} reviewCount={0} className="justify-center mt-2" />
             </div>
             <Link to="/pro/profile/edit">
               <Button variant="outline" fullWidth size="sm">

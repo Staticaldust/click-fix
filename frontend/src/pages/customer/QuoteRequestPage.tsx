@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
@@ -21,65 +21,10 @@ import {
 import { URGENCY_LEVELS } from '../../utils/constants';
 import { classNames } from '../../utils/helpers';
 import { quoteService } from '../../services/quote.service';
+import { professionalService } from '../../services/professional.service';
 import { useAuthStore } from '../../store/authStore';
 import type { Professional } from '../../types/professional.types';
 import type { QuoteQuestion } from '../../types/quote.types';
-
-// Mock data - in production would come from API
-const mockProfessional: Professional = {
-  id: '1',
-  email: 'david@example.com',
-  firstName: 'דוד',
-  lastName: 'כהן',
-  phone: '050-1234567',
-  role: 'professional',
-  status: 'approved',
-  categoryId: 'electrician',
-  categoryName: 'חשמלאי',
-  description: 'חשמלאי מוסמך עם ניסיון של מעל 15 שנה',
-  yearsOfExperience: 15,
-  serviceAreas: ['ירושלים', 'בית שמש'],
-  workingHours: [],
-  services: [
-    { id: '1', name: 'תיקון תקלות חשמל', minPrice: 150, maxPrice: 350 },
-    { id: '2', name: 'התקנת נקודות חשמל', minPrice: 100, maxPrice: 200 },
-  ],
-  certificates: [],
-  rating: {
-    overall: 4.8,
-    reliability: 4.9,
-    service: 4.7,
-    availability: 4.6,
-    price: 4.8,
-    professionalism: 4.9,
-  },
-  reviewCount: 127,
-  isVerified: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
-
-const mockQuestions: QuoteQuestion[] = [
-  {
-    id: 'q1',
-    question: 'מהו סוג העבודה הנדרשת?',
-    type: 'select',
-    options: ['תיקון תקלה', 'התקנה חדשה', 'בדיקה ואבחון', 'אחר'],
-    required: true,
-  },
-  {
-    id: 'q2',
-    question: 'תארו את הבעיה או העבודה הנדרשת',
-    type: 'text',
-    required: true,
-  },
-  {
-    id: 'q3',
-    question: 'כמה נקודות חשמל נדרשות? (אם רלוונטי)',
-    type: 'number',
-    required: false,
-  },
-];
 
 interface FormData {
   guestName?: string;
@@ -92,15 +37,41 @@ interface FormData {
 
 export default function QuoteRequestPage() {
   const { id } = useParams<{ id: string }>();
-
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [professional, setProfessional] = useState<Professional | null>(null);
+  const [questions, setQuestions] = useState<QuoteQuestion[]>([]);
   const { isAuthenticated } = useAuthStore();
 
-  // In production, fetch professional data
-  const professional = mockProfessional;
-  const questions = mockQuestions;
-  const isLoading = false;
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      try {
+        const proData = await professionalService.getById(id);
+        setProfessional(proData);
+
+        // Try to fetch questions for the professional's category
+        const proAny = proData as any;
+        const categoryId = proAny.categories?.[0]?.id ? String(proAny.categories[0].id) : proData.categoryId;
+        if (categoryId) {
+          try {
+            const questionsData = await quoteService.getQuestions(categoryId);
+            setQuestions(questionsData);
+          } catch {
+            // Questions endpoint may not exist yet, that's ok
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch professional:', error);
+        toast.error('שגיאה בטעינת הנתונים');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
 
   const {
     register,
@@ -179,6 +150,11 @@ export default function QuoteRequestPage() {
     );
   }
 
+  const proAny = professional as any;
+  const categoryName = professional.categoryName || proAny.categories?.[0]?.name || '';
+  const rating = professional.rating?.overall || 0;
+  const reviewCount = professional.reviewCount || proAny.reviews?.length || 0;
+
   return (
     <div className='container mx-auto px-4 py-8 max-w-3xl'>
       {/* Back link */}
@@ -206,10 +182,10 @@ export default function QuoteRequestPage() {
             <h2 className='font-semibold text-secondary-800'>
               {professional.firstName} {professional.lastName}
             </h2>
-            <p className='text-secondary-600'>{professional.categoryName}</p>
+            <p className='text-secondary-600'>{categoryName}</p>
             <RatingStars
-              rating={professional.rating.overall}
-              reviewCount={professional.reviewCount}
+              rating={rating}
+              reviewCount={reviewCount}
               size='sm'
             />
           </div>
@@ -335,7 +311,7 @@ export default function QuoteRequestPage() {
             {/* Additional Description */}
             <div>
               <label className='block text-sm font-medium text-secondary-700 mb-2'>
-                הערות נוספות
+                {questions.length > 0 ? 'הערות נוספות' : 'תיאור הבקשה'}
               </label>
               <textarea
                 rows={3}

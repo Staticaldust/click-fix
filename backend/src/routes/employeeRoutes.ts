@@ -9,6 +9,12 @@ router.use(authMiddleware);
 // GET all employees
 router.get("/", employeeController.getAllEmployees);
 
+// GET employee stats
+router.get("/:id/stats", employeeController.getEmployeeStats);
+
+// GET employee recent requests
+router.get("/:id/recent-requests", employeeController.getRecentRequests);
+
 // GET employee by ID
 router.get("/:id", employeeController.getEmployeeById);
 

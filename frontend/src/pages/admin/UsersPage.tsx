@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -9,94 +9,41 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { Card, Button, Input, Avatar, Modal, Select } from '../../components/common';
+import { Card, Button, Input, Avatar, Modal, Select, PageLoader } from '../../components/common';
 import { formatDate, classNames } from '../../utils/helpers';
-import type { User } from '../../types/user.types';
+import { adminService, AdminUser } from '../../services/admin.service';
+import { CUSTOMER_STATUS_LABELS, CUSTOMER_STATUS_COLORS } from '../../utils/constants';
+import { toast } from 'react-toastify';
 
 type CustomerStatus = 'active' | 'suspended' | 'pending';
 
-interface CustomerUser extends Omit<User, 'status'> {
-  status: CustomerStatus;
-  lastLogin?: Date;
-  quotesCount: number;
-}
-
-const mockUsers: CustomerUser[] = [
-  {
-    id: '1',
-    email: 'israel@example.com',
-    firstName: 'ישראל',
-    lastName: 'כהן',
-    phone: '050-1234567',
-    role: 'customer',
-    status: 'active',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01'),
-    lastLogin: new Date('2024-01-12'),
-    quotesCount: 5,
-  },
-  {
-    id: '2',
-    email: 'rachel@example.com',
-    firstName: 'רחל',
-    lastName: 'לוי',
-    phone: '052-9876543',
-    role: 'customer',
-    status: 'active',
-    createdAt: new Date('2023-12-15'),
-    updatedAt: new Date('2023-12-15'),
-    lastLogin: new Date('2024-01-11'),
-    quotesCount: 12,
-  },
-  {
-    id: '3',
-    email: 'david@example.com',
-    firstName: 'דוד',
-    lastName: 'גולד',
-    phone: '054-5555555',
-    role: 'customer',
-    status: 'suspended',
-    createdAt: new Date('2023-11-20'),
-    updatedAt: new Date('2023-11-20'),
-    quotesCount: 3,
-  },
-  {
-    id: '4',
-    email: 'sarah@example.com',
-    firstName: 'שרה',
-    lastName: 'אברהם',
-    phone: '053-1111111',
-    role: 'customer',
-    status: 'active',
-    createdAt: new Date('2024-01-05'),
-    updatedAt: new Date('2024-01-05'),
-    lastLogin: new Date('2024-01-10'),
-    quotesCount: 1,
-  },
-];
-
-const statusLabels: Record<CustomerStatus, string> = {
-  active: 'פעיל',
-  suspended: 'מושעה',
-  pending: 'ממתין',
-};
-
-const statusColors: Record<CustomerStatus, string> = {
-  active: 'bg-green-100 text-green-700',
-  suspended: 'bg-red-100 text-red-700',
-  pending: 'bg-yellow-100 text-yellow-700',
-};
-
 export default function UsersPage() {
-  const [users, setUsers] = useState<CustomerUser[]>(mockUsers);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [selectedUser, setSelectedUser] = useState<CustomerUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [suspendReason, setSuspendReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await adminService.getUsers();
+        setUsers(data);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+        toast.error('שגיאה בטעינת המשתמשים');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
@@ -119,46 +66,50 @@ export default function UsersPage() {
     if (!selectedUser) return;
     setIsProcessing(true);
     try {
-      console.log('Suspending user:', selectedUser.id, suspendReason);
-      // In production: await adminService.suspendUser(selectedUser.id, suspendReason);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Suspend user - visual only for now
       setUsers(
         users.map((u) =>
           u.id === selectedUser.id ? { ...u, status: 'suspended' as CustomerStatus } : u
         )
       );
+      toast.success(`${selectedUser.firstName} ${selectedUser.lastName} הושעה`);
       setShowSuspendModal(false);
       setSuspendReason('');
       setSelectedUser(null);
     } catch (error) {
       console.error('Failed to suspend:', error);
+      toast.error('שגיאה בהשעיית המשתמש');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleActivate = async (user: CustomerUser) => {
+  const handleActivate = async (user: AdminUser) => {
     setIsProcessing(true);
     try {
-      console.log('Activating user:', user.id);
-      // In production: await adminService.activateUser(user.id);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Activate user - visual only for now
       setUsers(
         users.map((u) =>
           u.id === user.id ? { ...u, status: 'active' as CustomerStatus } : u
         )
       );
+      toast.success(`${user.firstName} ${user.lastName} הופעל`);
     } catch (error) {
       console.error('Failed to activate:', error);
+      toast.error('שגיאה בהפעלת המשתמש');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const openSuspendModal = (user: CustomerUser) => {
+  const openSuspendModal = (user: AdminUser) => {
     setSelectedUser(user);
     setShowSuspendModal(true);
   };
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
 
   const statusOptions = [
     { value: '', label: 'כל הסטטוסים' },
@@ -251,10 +202,10 @@ export default function UsersPage() {
                     <span
                       className={classNames(
                         'px-2 py-1 rounded-full text-xs font-medium',
-                        statusColors[user.status]
+                        CUSTOMER_STATUS_COLORS[user.status]
                       )}
                     >
-                      {statusLabels[user.status]}
+                      {CUSTOMER_STATUS_LABELS[user.status]}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-secondary-600">

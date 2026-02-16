@@ -99,6 +99,60 @@ export const COMPLAINT_STATUS_LABELS = {
   closed: 'סגור',
 } as const;
 
+// === Color mappings for status/urgency badges ===
+
+export const QUOTE_STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-yellow-100 text-yellow-700',
+  responded: 'bg-green-100 text-green-700',
+  accepted: 'bg-blue-100 text-blue-700',
+  rejected: 'bg-red-100 text-red-700',
+  expired: 'bg-gray-100 text-gray-700',
+};
+
+export const URGENCY_COLORS: Record<string, string> = {
+  low: 'text-green-600',
+  medium: 'text-yellow-600',
+  high: 'text-red-600',
+};
+
+export const URGENCY_BG_COLORS: Record<string, string> = {
+  low: 'bg-green-100 text-green-700',
+  medium: 'bg-yellow-100 text-yellow-700',
+  high: 'bg-red-100 text-red-700',
+};
+
+export const URGENCY_LABELS: Record<string, string> = {
+  low: 'רגיל',
+  medium: 'בינוני',
+  high: 'דחוף',
+};
+
+export const REVIEW_STATUS_LABELS: Record<string, string> = {
+  pending: 'ממתין לבדיקה',
+  approved: 'אושר',
+  rejected: 'נדחה',
+  flagged: 'מסומן',
+};
+
+export const REVIEW_STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-yellow-100 text-yellow-700',
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+  flagged: 'bg-orange-100 text-orange-700',
+};
+
+export const CUSTOMER_STATUS_LABELS: Record<string, string> = {
+  active: 'פעיל',
+  suspended: 'מושעה',
+  pending: 'ממתין',
+};
+
+export const CUSTOMER_STATUS_COLORS: Record<string, string> = {
+  active: 'bg-green-100 text-green-700',
+  suspended: 'bg-red-100 text-red-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+};
+
 export const CATEGORIES = [
   { id: 'electrician', name: 'חשמלאי', icon: 'Zap' },
   { id: 'plumber', name: 'אינסטלטור', icon: 'Droplet' },

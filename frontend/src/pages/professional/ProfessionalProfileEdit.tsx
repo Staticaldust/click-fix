@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { toast } from 'react-toastify';
 import {
   User,
   Camera,
@@ -12,9 +13,11 @@ import {
   Save,
   CheckCircle,
 } from 'lucide-react';
-import { Button, Card, Input, Select } from '../../components/common';
+import { Button, Card, Input, Select, PageLoader } from '../../components/common';
 import { ISRAELI_CITIES, DAYS_OF_WEEK, CATEGORIES } from '../../utils/constants';
 import { classNames } from '../../utils/helpers';
+import { professionalService } from '../../services/professional.service';
+import { useAuthStore } from '../../store/authStore';
 import type { ServicePrice, WorkingHours } from '../../types/professional.types';
 
 type TabId = 'basic' | 'areas' | 'hours' | 'services' | 'certificates';
@@ -27,40 +30,75 @@ const tabs = [
   { id: 'certificates' as const, label: 'תעודות', icon: FileText },
 ];
 
-// Mock data - in production would come from API
-const mockProfile = {
-  firstName: 'דוד',
-  lastName: 'כהן',
-  email: 'david@example.com',
-  phone: '0501234567',
-  categoryId: 'electrician',
-  description: 'חשמלאי מוסמך עם ניסיון של מעל 15 שנה. מתמחה בהתקנות חשמל ביתיות ומסחריות.',
-  yearsOfExperience: 15,
-  serviceAreas: ['ירושלים', 'בית שמש', 'מודיעין'],
-  workingHours: DAYS_OF_WEEK.map((day) => ({
-    day: day.value as WorkingHours['day'],
-    isWorking: day.value !== 'saturday',
-    startTime: '08:00',
-    endTime: '17:00',
-  })),
-  services: [
-    { id: '1', name: 'תיקון תקלות חשמל', minPrice: 150, maxPrice: 350 },
-    { id: '2', name: 'התקנת נקודות חשמל', minPrice: 100, maxPrice: 200 },
-    { id: '3', name: 'החלפת לוח חשמל', minPrice: 800, maxPrice: 2500 },
-  ],
-};
+const defaultWorkingHours = DAYS_OF_WEEK.map((day) => ({
+  day: day.value as WorkingHours['day'],
+  isWorking: day.value !== 'saturday',
+  startTime: '08:00',
+  endTime: '17:00',
+}));
+
+interface ProfileFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  categoryId: string;
+  description: string;
+  yearsOfExperience: number;
+  serviceAreas: string[];
+  workingHours: WorkingHours[];
+}
 
 export default function ProfessionalProfileEdit() {
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabId>('basic');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [services, setServices] = useState<ServicePrice[]>(mockProfile.services);
+  const [services, setServices] = useState<ServicePrice[]>([]);
 
-  const { register, control, handleSubmit, watch } = useForm({
+  const { register, control, handleSubmit, watch, reset } = useForm<ProfileFormData>({
     defaultValues: {
-      ...mockProfile,
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      categoryId: '',
+      description: '',
+      yearsOfExperience: 0,
+      serviceAreas: [],
+      workingHours: defaultWorkingHours,
     },
   });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.id) return;
+      try {
+        const profile = await professionalService.getById(String(user.id));
+        const proAny = profile as any;
+        reset({
+          firstName: profile.firstName || '',
+          lastName: profile.lastName || '',
+          email: profile.email || '',
+          phone: profile.phone || '',
+          categoryId: proAny.categories?.[0]?.id ? String(proAny.categories[0].id) : '',
+          description: profile.description || '',
+          yearsOfExperience: profile.yearsOfExperience || 0,
+          serviceAreas: profile.serviceAreas || (proAny.area ? [proAny.area] : []),
+          workingHours: profile.workingHours || proAny.workingHours || defaultWorkingHours,
+        });
+        setServices(profile.services || proAny.services || []);
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+        toast.error('שגיאה בטעינת הפרופיל');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user?.id, reset]);
 
   const categoryOptions = CATEGORIES.map((c) => ({ value: c.id, label: c.name }));
 
@@ -83,20 +121,23 @@ export default function ProfessionalProfileEdit() {
     }));
   };
 
-  const onSubmit = async (data: typeof mockProfile) => {
+  const onSubmit = async (data: ProfileFormData) => {
+    if (!user?.id) return;
     setIsSaving(true);
     setSuccessMessage(null);
     try {
-      console.log('Saving profile:', { ...data, services });
-      // In production: await professionalService.updateProfile(data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await professionalService.updateProfile(String(user.id), { ...data, services } as any);
       setSuccessMessage('הפרופיל עודכן בהצלחה');
+      toast.success('הפרופיל עודכן בהצלחה');
     } catch (error) {
       console.error('Failed to save profile:', error);
+      toast.error('שגיאה בשמירת הפרופיל');
     } finally {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) return <PageLoader />;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -148,7 +189,7 @@ export default function ProfessionalProfileEdit() {
                 {/* Profile Image */}
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 text-3xl font-bold">
-                    {mockProfile.firstName[0]}{mockProfile.lastName[0]}
+                    {(watch('firstName')?.[0] || '')}{(watch('lastName')?.[0] || '')}
                   </div>
                   <div>
                     <Button type="button" variant="outline" size="sm">
@@ -358,13 +399,6 @@ export default function ProfessionalProfileEdit() {
               <Card>
                 <h2 className="text-lg font-semibold text-secondary-800 mb-6">תעודות והסמכות</h2>
                 <div className="space-y-4">
-                  <div className="p-4 bg-secondary-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-secondary-800">תעודת חשמלאי מוסמך</span>
-                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">מאומת</span>
-                    </div>
-                    <p className="text-sm text-secondary-500">הועלה ב-15/01/2024</p>
-                  </div>
                   <div className="border-2 border-dashed border-secondary-300 rounded-lg p-8 text-center">
                     <FileText className="w-12 h-12 text-secondary-300 mx-auto mb-3" />
                     <p className="text-secondary-600 mb-2">גרור קבצים לכאן או</p>

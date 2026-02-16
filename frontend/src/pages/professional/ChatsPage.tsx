@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   MessageSquare,
   Send,
@@ -7,117 +8,88 @@ import {
   Phone,
   MoreVertical,
 } from 'lucide-react';
-import { Card, Button, Input, Avatar } from '../../components/common';
+import { Card, Button, Input, Avatar, PageLoader } from '../../components/common';
 import { formatDate, classNames } from '../../utils/helpers';
-
-interface ChatPreview {
-  id: string;
-  customerId: string;
-  customerName: string;
-  lastMessage: string;
-  lastMessageTime: Date;
-  unreadCount: number;
-  isOnline: boolean;
-}
-
-interface Message {
-  id: string;
-  senderId: string;
-  content: string;
-  timestamp: Date;
-  isRead: boolean;
-}
-
-const mockChats: ChatPreview[] = [
-  {
-    id: '1',
-    customerId: 'c1',
-    customerName: 'ישראל כהן',
-    lastMessage: 'תודה רבה, אשמח לתאם פגישה',
-    lastMessageTime: new Date('2024-01-12T14:30:00'),
-    unreadCount: 2,
-    isOnline: true,
-  },
-  {
-    id: '2',
-    customerId: 'c2',
-    customerName: 'רחל לוי',
-    lastMessage: 'מתי תוכל להגיע?',
-    lastMessageTime: new Date('2024-01-12T10:15:00'),
-    unreadCount: 0,
-    isOnline: false,
-  },
-  {
-    id: '3',
-    customerId: 'c3',
-    customerName: 'משה גולד',
-    lastMessage: 'המחיר מקובל עליי',
-    lastMessageTime: new Date('2024-01-11T18:45:00'),
-    unreadCount: 0,
-    isOnline: true,
-  },
-];
-
-const mockMessages: Message[] = [
-  {
-    id: '1',
-    senderId: 'c1',
-    content: 'שלום, ראיתי את הפרופיל שלך ואני מעוניין בהתקנת נקודות חשמל',
-    timestamp: new Date('2024-01-12T10:00:00'),
-    isRead: true,
-  },
-  {
-    id: '2',
-    senderId: 'p1',
-    content: 'שלום! אשמח לעזור. כמה נקודות אתה צריך?',
-    timestamp: new Date('2024-01-12T10:05:00'),
-    isRead: true,
-  },
-  {
-    id: '3',
-    senderId: 'c1',
-    content: 'אני צריך 5 נקודות בסלון ו-3 בחדר שינה',
-    timestamp: new Date('2024-01-12T10:10:00'),
-    isRead: true,
-  },
-  {
-    id: '4',
-    senderId: 'p1',
-    content: 'מעולה. המחיר יהיה בין 800 ל-1200 ש"ח תלוי בסוג התקנה. מתי נוח לך שאגיע לבדוק?',
-    timestamp: new Date('2024-01-12T10:15:00'),
-    isRead: true,
-  },
-  {
-    id: '5',
-    senderId: 'c1',
-    content: 'תודה רבה, אשמח לתאם פגישה',
-    timestamp: new Date('2024-01-12T14:30:00'),
-    isRead: false,
-  },
-];
+import { chatService } from '../../services/chat.service';
+import type { ChatPreview, ChatMessage } from '../../services/chat.service';
+import { useAuthStore } from '../../store/authStore';
 
 export default function ChatsPage() {
   const { id: chatId } = useParams<{ id: string }>();
-  const [chats] = useState<ChatPreview[]>(mockChats);
-  const [selectedChat, setSelectedChat] = useState<ChatPreview | null>(
-    chatId ? mockChats.find((c) => c.id === chatId) || mockChats[0] : mockChats[0]
-  );
-  const [messages] = useState<Message[]>(mockMessages);
+  const { user } = useAuthStore();
+  const [chats, setChats] = useState<ChatPreview[]>([]);
+  const [selectedChat, setSelectedChat] = useState<ChatPreview | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredChats = chats.filter((chat) =>
-    chat.customerName.includes(searchQuery)
-  );
+  useEffect(() => {
+    const fetchChats = async () => {
+      try {
+        const data = await chatService.getChats();
+        setChats(data);
+        if (data.length > 0) {
+          const initial = chatId ? data.find((c) => String(c.id) === chatId) || data[0] : data[0];
+          setSelectedChat(initial);
+        }
+      } catch (error) {
+        console.error('Failed to fetch chats:', error);
+        toast.error('שגיאה בטעינת השיחות');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handleSend = () => {
-    if (!newMessage.trim()) return;
-    console.log('Sending message:', newMessage);
-    // In production: await chatService.sendMessage(selectedChat.id, newMessage);
-    setNewMessage('');
+    fetchChats();
+  }, [chatId]);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!selectedChat) return;
+      try {
+        const chatData = await chatService.getChatById(selectedChat.id);
+        setMessages(chatData.messages || []);
+      } catch (error) {
+        console.error('Failed to fetch messages:', error);
+      }
+    };
+
+    fetchMessages();
+  }, [selectedChat?.id]);
+
+  const getContactName = (chat: ChatPreview) => {
+    // Professional sees customer name, customer sees professional name
+    if (chat.customer) {
+      return `${chat.customer.firstName} ${chat.customer.lastName}`;
+    }
+    if (chat.professional) {
+      return `${chat.professional.firstName} ${chat.professional.lastName}`;
+    }
+    return 'משתמש';
   };
 
-  const currentUserId = 'p1'; // Professional's ID
+  const filteredChats = chats.filter((chat) =>
+    getContactName(chat).includes(searchQuery)
+  );
+
+  const handleSend = async () => {
+    if (!newMessage.trim() || !selectedChat) return;
+    try {
+      await chatService.sendMessage(selectedChat.id, newMessage);
+      // Refresh messages
+      const chatData = await chatService.getChatById(selectedChat.id);
+      setMessages(chatData.messages || []);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      toast.error('שגיאה בשליחת ההודעה');
+    }
+  };
+
+  const currentUserId = user?.id ? Number(user.id) : null;
+
+  if (isLoading) return <PageLoader />;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -149,41 +121,38 @@ export default function ChatsPage() {
 
           {/* Chat List */}
           <div className="flex-1 overflow-y-auto">
-            {filteredChats.map((chat) => (
-              <button
-                key={chat.id}
-                onClick={() => setSelectedChat(chat)}
-                className={classNames(
-                  'w-full flex items-start gap-3 p-4 text-right hover:bg-secondary-50 transition-colors border-b border-secondary-100',
-                  selectedChat?.id === chat.id && 'bg-primary-50'
-                )}
-              >
-                <div className="relative">
-                  <Avatar name={chat.customerName} size="md" />
-                  {chat.isOnline && (
-                    <span className="absolute bottom-0 left-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+            {filteredChats.length === 0 ? (
+              <div className="text-center py-8 text-secondary-400">
+                <MessageSquare className="w-10 h-10 mx-auto mb-2" />
+                <p className="text-sm">אין שיחות</p>
+              </div>
+            ) : (
+              filteredChats.map((chat) => (
+                <button
+                  key={chat.id}
+                  onClick={() => setSelectedChat(chat)}
+                  className={classNames(
+                    'w-full flex items-start gap-3 p-4 text-right hover:bg-secondary-50 transition-colors border-b border-secondary-100',
+                    selectedChat?.id === chat.id && 'bg-primary-50'
                   )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-secondary-800">
-                      {chat.customerName}
-                    </span>
-                    <span className="text-xs text-secondary-400">
-                      {formatDate(chat.lastMessageTime)}
-                    </span>
+                >
+                  <Avatar name={getContactName(chat)} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-secondary-800">
+                        {getContactName(chat)}
+                      </span>
+                      <span className="text-xs text-secondary-400">
+                        {chat.lastMessage ? formatDate(chat.lastMessage.createdAt) : ''}
+                      </span>
+                    </div>
+                    <p className="text-sm text-secondary-500 truncate">
+                      {chat.lastMessage?.content || 'אין הודעות'}
+                    </p>
                   </div>
-                  <p className="text-sm text-secondary-500 truncate">
-                    {chat.lastMessage}
-                  </p>
-                </div>
-                {chat.unreadCount > 0 && (
-                  <span className="px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
-                    {chat.unreadCount}
-                  </span>
-                )}
-              </button>
-            ))}
+                </button>
+              ))
+            )}
           </div>
         </Card>
 
@@ -194,19 +163,11 @@ export default function ChatsPage() {
               {/* Chat Header */}
               <div className="flex items-center justify-between p-4 border-b border-secondary-100">
                 <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar name={selectedChat.customerName} size="md" />
-                    {selectedChat.isOnline && (
-                      <span className="absolute bottom-0 left-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
-                    )}
-                  </div>
+                  <Avatar name={getContactName(selectedChat)} size="md" />
                   <div>
                     <h3 className="font-medium text-secondary-800">
-                      {selectedChat.customerName}
+                      {getContactName(selectedChat)}
                     </h3>
-                    <p className="text-sm text-secondary-500">
-                      {selectedChat.isOnline ? 'מחובר' : 'לא מחובר'}
-                    </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -221,40 +182,46 @@ export default function ChatsPage() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message) => {
-                  const isOwn = message.senderId === currentUserId;
-                  return (
-                    <div
-                      key={message.id}
-                      className={classNames(
-                        'flex',
-                        isOwn ? 'justify-start' : 'justify-end'
-                      )}
-                    >
+                {messages.length === 0 ? (
+                  <div className="text-center py-8 text-secondary-400">
+                    <p>אין הודעות עדיין. שלח הודעה ראשונה!</p>
+                  </div>
+                ) : (
+                  messages.map((message) => {
+                    const isOwn = message.senderId === currentUserId;
+                    return (
                       <div
+                        key={message.id}
                         className={classNames(
-                          'max-w-[70%] px-4 py-2 rounded-2xl',
-                          isOwn
-                            ? 'bg-primary-500 text-white rounded-br-none'
-                            : 'bg-secondary-100 text-secondary-800 rounded-bl-none'
+                          'flex',
+                          isOwn ? 'justify-start' : 'justify-end'
                         )}
                       >
-                        <p>{message.content}</p>
-                        <p
+                        <div
                           className={classNames(
-                            'text-xs mt-1',
-                            isOwn ? 'text-primary-100' : 'text-secondary-400'
+                            'max-w-[70%] px-4 py-2 rounded-2xl',
+                            isOwn
+                              ? 'bg-primary-500 text-white rounded-br-none'
+                              : 'bg-secondary-100 text-secondary-800 rounded-bl-none'
                           )}
                         >
-                          {message.timestamp.toLocaleTimeString('he-IL', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
+                          <p>{message.content}</p>
+                          <p
+                            className={classNames(
+                              'text-xs mt-1',
+                              isOwn ? 'text-primary-100' : 'text-secondary-400'
+                            )}
+                          >
+                            {new Date(message.createdAt).toLocaleTimeString('he-IL', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
 
               {/* Input */}
